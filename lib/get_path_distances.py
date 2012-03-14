@@ -44,6 +44,8 @@ if __name__ == "__main__":
     cost_rast = arcpy.GetParameterAsText (2)
     workspace = arcpy.GetParameterAsText (3)
 
+    target_fld = "New_WP"
+
     arcpy.env.overwriteOutput = True
 
     arcpy.env.workspace = workspace
@@ -79,30 +81,36 @@ if __name__ == "__main__":
     
     layer = "feat_layer"
     arcmgt.MakeFeatureLayer(in_file, layer)
-    target_fld = "New_WP"
+    
+    
+    try:
+        fh = open(out_file, 'w')
+    except:
+        add_msg_and_print ("Unable to open %s for writing" % out_file)
+        raise
+    fh.write ("FROM,TO,DISTANCE\n")
 
     for row in rows:
-        
+
         if last_target is None:
             last_target = row.getValue(target_fld)
             continue
-        
+
         arcmgt.SelectLayerByAttribute(
             layer,
             "NEW_SELECTION",
             '%s = %s' % (target_fld, last_target)
         )
         raster = PathDistance(layer, cost_rast)
-        #scratch = arcpy.CreateScratchName('xx')
-        #raster.save(scratch)
-        
+
         shp = row.shape
         centroid = shp.centroid
         (x, y) = (centroid.X, centroid.Y)
         result = arcmgt.GetCellValue(raster, "%s %s" % (x, y), "1")
         print "%s,%s,%s" % (row.getValue(target_fld), last_target, result.getOutput(0))
-        
+        fh.write ("%s,%s,%s\n" % (row.getValue(target_fld), last_target, result.getOutput(0)))
         last_target = row.getValue(target_fld)
-
+    
+    fh.close
 
     print "Completed"
