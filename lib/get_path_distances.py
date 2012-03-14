@@ -50,7 +50,14 @@ if __name__ == "__main__":
     if (arcpy.env.workspace is None):
         arcpy.env.workspace = os.getcwd()
     
-    arcpy.env.extent = "MINOF"
+    #arcpy.env.extent = "MINOF"
+    arcpy.env.snapRaster = cost_rast
+    scratch = arcpy.CreateScratchName('xx', '.shp')
+    arcpy.Buffer_analysis(in_file, scratch, "2000 meters")
+    desc = arcpy.Describe(scratch)
+    arcpy.env.extent = desc.extent
+    arcmgt.Delete(scratch)
+    print "Extent is %s" % arcpy.env.extent
 
     add_msg_and_print ('Currently in directory: %s\n' % os.getcwd())
     add_msg_and_print ('Workspace is: %s' % arcpy.env.workspace)
@@ -68,7 +75,7 @@ if __name__ == "__main__":
     fields = arcpy.ListFields(in_file)
     
     rows = arcpy.SearchCursor(table_view)
-    last_row = None
+    last_target = None
     
     layer = "feat_layer"
     arcmgt.MakeFeatureLayer(in_file, layer)
@@ -76,16 +83,26 @@ if __name__ == "__main__":
 
     for row in rows:
         
-        arcmgt.SelectLayerByAttribute(layer, "NEW_SELECTION", '%s = %s' % (target_fld, row.getValue(target_fld)))
-        raster = PathDistance(in_file, cost_rast)
-        
-        if last_row is None:
-            #last_row = new_row
+        if last_target is None:
+            last_target = row.getValue(target_fld)
             continue
         
+        arcmgt.SelectLayerByAttribute(
+            layer,
+            "NEW_SELECTION",
+            '%s = %s' % (target_fld, last_target)
+        )
+        raster = PathDistance(layer, cost_rast)
+        #scratch = arcpy.CreateScratchName('xx')
+        #raster.save(scratch)
+        
+        shp = row.shape
+        centroid = shp.centroid
+        (x, y) = (centroid.X, centroid.Y)
+        result = arcmgt.GetCellValue(raster, "%s %s" % (x, y), "1")
+        print "%s,%s,%s" % (row.getValue(target_fld), last_target, result.getOutput(0))
+        
+        last_target = row.getValue(target_fld)
 
-        #last_row = new_row
-    
-    fh.close
-    
+
     print "Completed"
