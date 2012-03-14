@@ -92,7 +92,10 @@ if __name__ == "__main__":
     arcmgt.SelectLayerByLocation(layer, "COMPLETELY_WITHIN", polygon_file)
     arcmgt.SelectLayerByAttribute(layer, "SWITCH_SELECTION")
     
-    arcpy.CopyFeatures_management(layer, "chihuahua_10000plus")
+    temp_overlap = arcpy.CreateScratchName("xx_overlap_", ".shp")
+    arcpy.CopyFeatures_management(layer, temp_overlap)
 
+    #  now we need to iterate over those overlapping vertices and integrate them with the boundary polygon
 
     print "Completed"
+    
