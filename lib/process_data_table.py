@@ -87,6 +87,8 @@ if __name__ == "__main__":
     arcpy.env.XYResolution = "0.0000000001 Meters"
     arcpy.env.XYTolerance  = "0.0000000001 Meters"
     
+    featureList = []
+
     for row in rows:
         new_row = []
         for fld in fields:
