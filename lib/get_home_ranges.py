@@ -55,7 +55,9 @@ if __name__ == "__main__":
         print "Calculating percentile %s" % percentile
         pctl_val = get_percentile (kde, percentile = percentile, skip_value = 0)
         clipped = Con (kde, 1, None, "Value > %s" % pctl_val)
-        clipped.save ("xx" + str (int (percentile * 10)))
+        scratch = arcpy.CreateScratchName('pctl', str(int(percentile * 10)))
+        clipped.save (scratch)
+        
         print "%s is %s" % (percentile, pctl_val)
 
     print "Completed"
