@@ -37,30 +37,7 @@ def add_msg_and_print(msg, severity=0):
         pass
 
 
-if __name__ == "__main__":
-
-    in_file     = arcpy.GetParameterAsText (0)
-    percentiles = arcpy.GetParameterAsText (1)
-    skip_val    = arcpy.GetParameterAsText (2)
-    multiplier  = arcpy.GetParameterAsText (3)
-    workspace   = arcpy.GetParameterAsText (4)
-
-    if len (multiplier) == 0 or multiplier == "#":
-        multiplier = 100
-    if len (skip_val) == 0 or skip_val == "#":
-        skip_val = None
-    if not skip_val is None:
-        skip_val = int (skip_val)
-
-    arcpy.env.overwriteOutput = True
-
-    arcpy.env.workspace = workspace
-    if (arcpy.env.workspace is None):
-        arcpy.env.workspace = os.getcwd()
-    
-    add_msg_and_print ('Currently in directory: %s\n' % os.getcwd())
-    add_msg_and_print ('Workspace is: %s' % arcpy.env.workspace)
-    
+def get_percentile (in_file, percentile = 0.5, multiplier = 100, skip_val = None):
     mult_rast = Times (in_file, multiplier)
     int_rast  = Int (mult_rast)
     arcmgt.BuildRasterAttributeTable(int_rast)
@@ -85,7 +62,7 @@ if __name__ == "__main__":
 
     row = None
 
-    target = cum_sum * 0.1
+    target = cum_sum * percentile
 
     rows2 = arcpy.SearchCursor(table_view)
     cum_sum = 0
@@ -105,8 +82,38 @@ if __name__ == "__main__":
             break
 
     val = float (val) / multiplier
+    
+    return val
 
-    print "Value is %s, cum_sum is %s, target was %s" % (val, cum_sum, target)
+
+if __name__ == "__main__":
+
+    in_file     = arcpy.GetParameterAsText (0)
+    percentile  = arcpy.GetParameterAsText (1)
+    skip_val    = arcpy.GetParameterAsText (2)
+    multiplier  = arcpy.GetParameterAsText (3)
+    workspace   = arcpy.GetParameterAsText (4)
+
+    if len (multiplier) == 0 or multiplier == "#":
+        multiplier = 100
+    if len (skip_val) == 0 or skip_val == "#":
+        skip_val = None
+    if not skip_val is None:
+        skip_val = int (skip_val)
+    percentile = float (percentile)
+
+    arcpy.env.overwriteOutput = True
+
+    arcpy.env.workspace = workspace
+    if (arcpy.env.workspace is None):
+        arcpy.env.workspace = os.getcwd()
+    
+    add_msg_and_print ('Currently in directory: %s\n' % os.getcwd())
+    add_msg_and_print ('Workspace is: %s' % arcpy.env.workspace)
+    
+    val = get_percentile(in_file, percentile, multiplier, skip_val)
+
+    print "Value is %s" % (val)
 
 
 
