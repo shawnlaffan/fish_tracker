@@ -39,12 +39,13 @@ def add_msg_and_print(msg, severity=0):
 
 if __name__ == "__main__":
 
-    in_file   = arcpy.GetParameterAsText (0)
-    out_file  = arcpy.GetParameterAsText (1)
-    cost_rast = arcpy.GetParameterAsText (2)
-    workspace = arcpy.GetParameterAsText (3)
+    in_file    = arcpy.GetParameterAsText (0)
+    cost_rast  = arcpy.GetParameterAsText (1)
+    target_fld = arcpy.GetParameterAsText (2)
+    workspace  = arcpy.GetParameterAsText (3)
 
-    target_fld = "New_WP"
+    if len (target_fld) == 0 or target_fld == "#":
+        target_fld = "New_WP"
 
     arcpy.env.overwriteOutput = True
 
@@ -65,30 +66,34 @@ if __name__ == "__main__":
     add_msg_and_print ('Workspace is: %s' % arcpy.env.workspace)
     #add_msg_and_print ('Scratch table is: %s' % out_table)
     
-    #  get the path to the output table
-    path = os.path.dirname(out_file)
-    if len (path) == 0:
-        path = "."
-    basename = os.path.basename(out_file)
-    
     table_view = "table_view"
     arcmgt.MakeTableView(in_file, table_view)
     
     fields = arcpy.ListFields(in_file)
     
-    rows = arcpy.SearchCursor(table_view)
-    last_target = None
     
     layer = "feat_layer"
     arcmgt.MakeFeatureLayer(in_file, layer)
-    
+    desc = arcpy.Describe(layer)
+    fld_names = []
+    for fld in desc.fields:
+        fld_names.append(fld.name)
     
     try:
-        fh = open(out_file, 'w')
-    except:
-        add_msg_and_print ("Unable to open %s for writing" % out_file)
+        fields = ["PATH_FROM", "PATH_TO", "PATH_DIST"]
+        #arcmgt.DeleteField(layer, fields)
+        #arcmgt.DeleteField(layer, "FROM_")
+        for fld in fields:
+            if not fld in fld_names:
+                arcmgt.AddField(table_view, fld, "DOUBLE")  #  SHOULD GET TYPE FROM target_fld
+        
+    except Exception as e:
+        print e.message
+        arcpy.AddError(e.message)
         raise
-    fh.write ("FROM,TO,DISTANCE\n")
+
+    rows = arcpy.UpdateCursor(table_view)
+    last_target = None
 
     for row in rows:
 
@@ -107,10 +112,14 @@ if __name__ == "__main__":
         centroid = shp.centroid
         (x, y) = (centroid.X, centroid.Y)
         result = arcmgt.GetCellValue(raster, "%s %s" % (x, y), "1")
+        value = result.getOutput(0)
+        row.setValue("PATH_TO",   float (row.getValue(target_fld)))
+        row.setValue("PATH_FROM", float (last_target))
+        row.setValue("PATH_DIST", float (value))
         print "%s,%s,%s" % (row.getValue(target_fld), last_target, result.getOutput(0))
-        fh.write ("%s,%s,%s\n" % (row.getValue(target_fld), last_target, result.getOutput(0)))
+        rows.updateRow(row)
+
         last_target = row.getValue(target_fld)
-    
-    fh.close
+
 
     print "Completed"
