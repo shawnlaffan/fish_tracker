@@ -104,6 +104,8 @@ if __name__ == "__main__":
         if cum_sum >= target:
             break
 
+    val = float (val) / multiplier
+
     print "Value is %s, cum_sum is %s, target was %s" % (val, cum_sum, target)
 
 
