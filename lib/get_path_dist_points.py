@@ -19,7 +19,7 @@ def add_msg_and_print(msg, severity=0):
     # Adds a Message to the geoprocessor (in case this is run as a tool)
     # and also prints the message to the screen (standard output)
     # 
-    print msg
+    #print msg
 
     # Split the message on \n first, so that if it's multiple lines, 
     #  a GPMessage will be added for each line
@@ -56,7 +56,11 @@ if __name__ == "__main__":
     #arcpy.env.extent = "MINOF"
     arcpy.env.snapRaster = cost_rast
     scratch = arcpy.CreateScratchName('xx', '.shp')
-    arcpy.Buffer_analysis(in_file, scratch, "2000 meters")
+    try:
+        arcpy.Buffer_analysis(in_file, scratch, "2000 meters")
+    except Exception as e:
+        add_msg_and_print(str(e))
+        raise
     desc = arcpy.Describe(scratch)
     arcpy.env.extent = desc.extent
     arcmgt.Delete(scratch)
@@ -88,8 +92,8 @@ if __name__ == "__main__":
                 arcmgt.AddField(table_view, fld, "DOUBLE")  #  SHOULD GET TYPE FROM target_fld
         
     except Exception as e:
-        print e.message
-        arcpy.AddError(e.message)
+        print e
+        arcpy.AddError(str (e))
         raise
     
     dest_layer = "dest_layer"
@@ -103,6 +107,8 @@ if __name__ == "__main__":
         if last_target is None:
             last_target = row.getValue(target_fld)
             continue
+        
+        #print "last_target is %s" % last_target
 
         arcmgt.SelectLayerByAttribute(
             layer,
@@ -125,22 +131,23 @@ if __name__ == "__main__":
         
         #  get a raster of the path from origin to destination
         
-        condition = "%s in (%s, %s)" % (target_fld, last_target, row.getValue(target_fld))
+        #condition = "%s in (%s, %s)" % (target_fld, last_target, row.getValue(target_fld))
         condition = "%s = %s or %s = %s" % (target_fld, last_target, target_fld, row.getValue(target_fld))
-        print "Condition is: %s" % condition
-        result = int(arcmgt.GetCount(dest_layer).getOutput(0))
-        print result
+        #print "Condition is: %s" % condition
+        #result = int(arcmgt.GetCount(dest_layer).getOutput(0))
+        #print result
         arcmgt.SelectLayerByAttribute(dest_layer, where_clause = condition)
-        result = int(arcmgt.GetCount(dest_layer).getOutput(0))
-        print result
+        #result = int(arcmgt.GetCount(dest_layer).getOutput(0))
+        #print result
         try:
             path_rast = CostPath(dest_layer, path_dist_rast, backlink_rast)
-            rate = time / path_distance
-            zero = Time (path_rast, 0)
-            rate_rast = Plus (zero, rate)
-            rate_rast.save(arcpy.CreateScratchName("cp"))
+            #rate = time / path_distance
+            #zero = Time (path_rast, 0)
+            #rate_rast = Plus (zero, rate)
+            path_dist_rast.save(arcpy.CreateScratchName("pd%d" % last_target))
+            path_rast.save (arcpy.CreateScratchName("cp%d" % last_target))
         except Exception as e:
-            add_msg_and_print(e.message)
+            add_msg_and_print(str (e))
         
         #  now we convert to point
         
@@ -148,7 +155,7 @@ if __name__ == "__main__":
         try:
             arcmgt.Delete(backlink_rast)
         except Exception as e:
-            add_msg_and_print(e.message)
+            add_msg_and_print(str (e))
 
         last_target = row.getValue(target_fld)
 
