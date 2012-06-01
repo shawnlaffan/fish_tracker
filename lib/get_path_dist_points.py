@@ -49,9 +49,10 @@ if __name__ == "__main__":
 
     arcpy.env.overwriteOutput = True
 
-    arcpy.env.workspace = workspace
+    if len(workspace):
+        arcpy.env.workspace = workspace
     if (arcpy.env.workspace is None):
-        arcpy.env.workspace = os.getcwd()
+        arcpy.env.workspace = os.getcwd()  
     
     #arcpy.env.extent = "MINOF"
     arcpy.env.snapRaster = cost_rast
