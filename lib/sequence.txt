@@ -1,0 +1,3 @@
+1.  table_to_shape_with_time_diff.py to get a shapefile with the time diffs
+2.  select points not in the river and snap them to the river 
+3.  calculate costpath distances between subsequent points, calculate the rate per unit distance and assign to cells based on their distances from adjacent (preceding) cells.  Sum over all paths.
