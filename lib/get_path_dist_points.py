@@ -51,10 +51,9 @@ if __name__ == "__main__":
 
     if len(workspace):
         arcpy.env.workspace = workspace
-    if (arcpy.env.workspace is None):
-        arcpy.env.workspace = os.getcwd()  
-    
-    #arcpy.env.extent = "MINOF"
+    if arcpy.env.workspace is None or len(arcpy.env.workspace) == 0:
+        arcpy.env.workspace = os.getcwd()
+
     arcpy.env.snapRaster = cost_rast
     scratch = arcpy.CreateScratchName('xx', '.shp')
     try:
@@ -86,8 +85,6 @@ if __name__ == "__main__":
     
     try:
         fields = ["PATH_FROM", "PATH_TO", "PATH_DIST"]
-        #arcmgt.DeleteField(layer, fields)
-        #arcmgt.DeleteField(layer, "FROM_")
         for fld in fields:
             if not fld in fld_names:
                 arcmgt.AddField(table_view, fld, "DOUBLE")  #  SHOULD GET TYPE FROM target_fld
@@ -96,7 +93,7 @@ if __name__ == "__main__":
         print e
         arcpy.AddError(str (e))
         raise
-    
+
     dest_layer = "dest_layer"
     arcmgt.MakeFeatureLayer(in_file, dest_layer)
 
@@ -108,8 +105,6 @@ if __name__ == "__main__":
         if last_target is None:
             last_target = row.getValue(target_fld)
             continue
-        
-        #print "last_target is %s" % last_target
 
         arcmgt.SelectLayerByAttribute(
             layer,
@@ -131,8 +126,7 @@ if __name__ == "__main__":
         rows.updateRow(row)
         
         #  get a raster of the path from origin to destination
-        
-        #condition = "%s in (%s, %s)" % (target_fld, last_target, row.getValue(target_fld))
+
         condition = "%s = %s or %s = %s" % (target_fld, last_target, target_fld, row.getValue(target_fld))
         #print "Condition is: %s" % condition
         #result = int(arcmgt.GetCount(dest_layer).getOutput(0))
@@ -145,13 +139,13 @@ if __name__ == "__main__":
             #rate = time / path_distance
             #zero = Time (path_rast, 0)
             #rate_rast = Plus (zero, rate)
-            path_dist_rast.save(arcpy.CreateScratchName("pd%d" % last_target))
-            path_rast.save (arcpy.CreateScratchName("cp%d" % last_target))
+            path_dist_rast.save(arcpy.CreateScratchName("pd%d_" % last_target))
+            path_rast.save (arcpy.CreateScratchName("cp%d_" % last_target))
         except Exception as e:
             add_msg_and_print(str (e))
         
         #  now we convert to point
-        
+        #print path_rast
 
         try:
             arcmgt.Delete(backlink_rast)
