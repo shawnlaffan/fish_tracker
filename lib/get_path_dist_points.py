@@ -15,69 +15,7 @@ import string
 import math
 import pprint
 
-def add_msg_and_print(msg, severity=0):
-    # Adds a Message to the geoprocessor (in case this is run as a tool)
-    # and also prints the message to the screen (standard output)
-    # 
-    #print msg
-
-    # Split the message on \n first, so that if it's multiple lines, 
-    #  a GPMessage will be added for each line
-    try:
-        for string in msg.split('\n'):
-            # Add appropriate geoprocessing message 
-            #
-            if severity == 0:
-                arcpy.AddMessage(string)
-            elif severity == 1:
-                arcpy.AddWarning(string)
-            elif severity == 2:
-                arcpy.AddError(string)
-    except:
-        pass
-
-
-if __name__ == "__main__":
-
-    in_file    = arcpy.GetParameterAsText (0)
-    cost_rast  = arcpy.GetParameterAsText (1)
-    target_fld = arcpy.GetParameterAsText (2)
-    workspace  = arcpy.GetParameterAsText (3)
-
-    if len (target_fld) == 0 or target_fld == "#":
-        target_fld = "New_WP"
-
-    arcpy.env.overwriteOutput = True
-
-    if len(workspace):
-        arcpy.env.workspace = workspace
-    if arcpy.env.workspace is None or len(arcpy.env.workspace) == 0:
-        arcpy.env.workspace = os.getcwd()
-
-    arcpy.env.snapRaster = cost_rast
-    scratch = arcpy.CreateScratchName('xx', '.shp')
-    try:
-        arcpy.Buffer_analysis(in_file, scratch, "2000 meters")
-    except Exception as e:
-        add_msg_and_print(str(e))
-        raise
-    desc = arcpy.Describe(scratch)
-    arcpy.env.extent = desc.extent
-    arcmgt.Delete(scratch)
-    print "Extent is %s" % arcpy.env.extent
-
-    add_msg_and_print ('Currently in directory: %s\n' % os.getcwd())
-    add_msg_and_print ('Workspace is: %s' % arcpy.env.workspace)
-    #add_msg_and_print ('Scratch table is: %s' % out_table)
-    
-    table_view = "table_view"
-    arcmgt.MakeTableView(in_file, table_view)
-    
-    fields = arcpy.ListFields(in_file)
-    
-    
-    layer = "feat_layer"
-    arcmgt.MakeFeatureLayer(in_file, layer)
+def add_fields_to_layer (layer):
     desc = arcpy.Describe(layer)
     fld_names = []
     for fld in desc.fields:
@@ -93,6 +31,54 @@ if __name__ == "__main__":
         print e
         arcpy.AddError(str (e))
         raise
+    return
+
+
+if __name__ == "__main__":
+
+    in_file    = arcpy.GetParameterAsText (0)
+    cost_rast  = arcpy.GetParameterAsText (1)
+    target_fld = arcpy.GetParameterAsText (2)
+    workspace  = arcpy.GetParameterAsText (3)
+
+    if len (target_fld) == 0 or target_fld == "#":
+        target_fld = "New_WP"
+
+    arcpy.env.overwriteOutput = True
+
+    if arcpy.env.outputCoordinateSystem is None:
+        arcpy.env.outputCoordinateSystem = cost_rast
+    print arcpy.env.outputCoordinateSystem.name
+
+    if len(workspace):
+        arcpy.env.workspace = workspace
+    if arcpy.env.workspace is None or len(arcpy.env.workspace) == 0:
+        arcpy.env.workspace = os.getcwd()
+
+    arcpy.env.snapRaster = cost_rast
+    scratch = arcpy.CreateScratchName('xx', '.shp')
+    try:
+        arcpy.Buffer_analysis(in_file, scratch, "2000 meters")
+    except Exception as e:
+        arcpy.AddMessage (str(e))
+        raise
+    desc = arcpy.Describe(scratch)
+    arcpy.env.extent = desc.extent
+    arcmgt.Delete(scratch)
+    print "Extent is %s" % arcpy.env.extent
+
+    arcpy.AddMessage ('Currently in directory: %s\n' % os.getcwd())
+    arcpy.AddMessage ('Workspace is: %s' % arcpy.env.workspace)
+    
+    table_view = "table_view"
+    arcmgt.MakeTableView(in_file, table_view)
+    
+    fields = arcpy.ListFields(in_file)
+    
+    feat_layer = "feat_layer"
+    arcmgt.MakeFeatureLayer(in_file, feat_layer)
+    
+    add_fields_to_layer (feat_layer)
 
     dest_layer = "dest_layer"
     arcmgt.MakeFeatureLayer(in_file, dest_layer)
@@ -107,12 +93,12 @@ if __name__ == "__main__":
             continue
 
         arcmgt.SelectLayerByAttribute(
-            layer,
+            feat_layer,
             "NEW_SELECTION",
             '%s = %s' % (target_fld, last_target)
         )
         backlink_rast  = arcpy.CreateScratchName("backlink")
-        path_dist_rast = PathDistance(layer, cost_rast, out_backlink_raster = backlink_rast)
+        path_dist_rast = PathDistance(feat_layer, cost_rast, out_backlink_raster = backlink_rast)
 
         shp = row.shape
         centroid = shp.centroid
@@ -124,7 +110,7 @@ if __name__ == "__main__":
         row.setValue("PATH_DIST", float (path_distance))
         print "%s,%s,%s" % (row.getValue(target_fld), last_target, path_distance)
         rows.updateRow(row)
-        
+
         #  get a raster of the path from origin to destination
 
         condition = "%s = %s or %s = %s" % (target_fld, last_target, target_fld, row.getValue(target_fld))
@@ -142,7 +128,7 @@ if __name__ == "__main__":
             path_dist_rast.save(arcpy.CreateScratchName("pd%d_" % last_target))
             path_rast.save (arcpy.CreateScratchName("cp%d_" % last_target))
         except Exception as e:
-            add_msg_and_print(str (e))
+            arcpy.AddMessage (str (e))
         
         #  now we convert to point
         #print path_rast
@@ -150,7 +136,7 @@ if __name__ == "__main__":
         try:
             arcmgt.Delete(backlink_rast)
         except Exception as e:
-            add_msg_and_print(str (e))
+            arcpy.AddMessage (str (e))
 
         last_target = row.getValue(target_fld)
 
