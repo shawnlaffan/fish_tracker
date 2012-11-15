@@ -3,6 +3,8 @@ Process data tables collected for Matt Taylor's Mulloway research.
 Determine if they are best BBQ'd or crumbed and oven roasted.
 """
 
+class NoFeatures(Exception):
+    pass
 
 # Import arcpy module and other required modules
 import arcpy
@@ -11,30 +13,12 @@ from arcpy.sa import *
 arcpy.CheckOutExtension("Spatial")
 
 import os
-import string
-import math
-import pprint
-
-def add_fields_to_layer (layer):
-    desc = arcpy.Describe(layer)
-    fld_names = []
-    for fld in desc.fields:
-        fld_names.append(fld.name)
-    
-    try:
-        fields = ["PATH_FROM", "PATH_TO", "PATH_DIST"]
-        for fld in fields:
-            if not fld in fld_names:
-                arcmgt.AddField(table_view, fld, "DOUBLE")  #  SHOULD GET TYPE FROM target_fld
-        
-    except Exception as e:
-        print e
-        arcpy.AddError(str (e))
-        raise
-    return
+import numpy
+#import pprint
 
 
 if __name__ == "__main__":
+    t_diff_fld_name = "T_DIFF_HRS"
 
     in_file    = arcpy.GetParameterAsText (0)
     cost_rast  = arcpy.GetParameterAsText (1)
@@ -69,27 +53,23 @@ if __name__ == "__main__":
 
     arcpy.AddMessage ('Currently in directory: %s\n' % os.getcwd())
     arcpy.AddMessage ('Workspace is: %s' % arcpy.env.workspace)
-    
-    table_view = "table_view"
-    arcmgt.MakeTableView(in_file, table_view)
-    
-    fields = arcpy.ListFields(in_file)
-    
+
+
     feat_layer = "feat_layer"
     arcmgt.MakeFeatureLayer(in_file, feat_layer)
-    
-    add_fields_to_layer (feat_layer)
+    desc = arcpy.Describe (feat_layer)
+    oid_fd_name = desc.OIDFieldName
 
-    dest_layer = "dest_layer"
-    arcmgt.MakeFeatureLayer(in_file, dest_layer)
-
-    rows = arcpy.UpdateCursor(table_view)
+    proc_layer = "process_layer"
+    arcmgt.MakeFeatureLayer(in_file, proc_layer)
+    rows = arcpy.SearchCursor(proc_layer)
     last_target = None
 
     for row in rows:
 
         if last_target is None:
             last_target = row.getValue(target_fld)
+            last_oid    = row.ID
             continue
 
         arcmgt.SelectLayerByAttribute(
@@ -100,43 +80,73 @@ if __name__ == "__main__":
         backlink_rast  = arcpy.CreateScratchName("backlink")
         path_dist_rast = PathDistance(feat_layer, cost_rast, out_backlink_raster = backlink_rast)
 
+        #  extract the distance from the last point
         shp = row.shape
         centroid = shp.centroid
         (x, y) = (centroid.X, centroid.Y)
         result = arcmgt.GetCellValue(path_dist_rast, "%s %s" % (x, y), "1")
         path_distance = result.getOutput(0)
-        row.setValue("PATH_TO",   float (row.getValue(target_fld)))
-        row.setValue("PATH_FROM", float (last_target))
-        row.setValue("PATH_DIST", float (path_distance))
-        print "%s,%s,%s" % (row.getValue(target_fld), last_target, path_distance)
-        rows.updateRow(row)
+
+        traverse_time = row.getValue (t_diff_fld_name)
 
         #  get a raster of the path from origin to destination
+        #condition = '"%s" = %s or "%s" = %s' % (target_fld, last_target, target_fld, row.getValue(target_fld))
+        condition = '%s in (%i, %i)' % (oid_fd_name, last_oid, row.ID)
+        dest_layer = "dest_layer" + str (last_oid)
+        arcmgt.MakeFeatureLayer(in_file, dest_layer, where_clause = condition)
 
-        condition = "%s = %s or %s = %s" % (target_fld, last_target, target_fld, row.getValue(target_fld))
-        #print "Condition is: %s" % condition
-        #result = int(arcmgt.GetCount(dest_layer).getOutput(0))
-        #print result
-        arcmgt.SelectLayerByAttribute(dest_layer, where_clause = condition)
-        #result = int(arcmgt.GetCount(dest_layer).getOutput(0))
-        #print result
+        count = arcmgt.GetCount(dest_layer)
+        count = int (count.getOutput(0))
+        if count == 0:
+            raise NoFeatures("No features selected.  Possible coordinate system issues.\n" + condition)
+
+        path_rast = None
         try:
             path_rast = CostPath(dest_layer, path_dist_rast, backlink_rast)
-            #rate = time / path_distance
-            #zero = Time (path_rast, 0)
-            #rate_rast = Plus (zero, rate)
             path_dist_rast.save(arcpy.CreateScratchName("pd%d_" % last_target))
             path_rast.save (arcpy.CreateScratchName("cp%d_" % last_target))
         except Exception as e:
-            arcpy.AddMessage (str (e))
+            raise
+            #arcpy.AddMessage (str (e))
         
-        #  now we convert to point
-        #print path_rast
+        try:
+            path_array    = arcpy.RasterToNumPyArray(path_dist_rast)
+            transit_array = numpy.copy(path_array)
+        except:
+            raise
+        nodata = path_dist_rast.noDataValue
+
+        #  loop over the array and check the neighbours
+        row_count = len (path_array) 
+        col_count = len (path_array[0]) 
+        i = -1
+        for row in path_array:
+            i = i + 1
+            j = -1
+            for val in row:
+                j = j + 1
+                if val == nodata:
+                    continue
+                nbrs = []
+                for k in (i-1, i, i+1):
+                    if k < 0 or k >= row_count:
+                        continue    
+                    checkrow = path_array[k]
+                    for l in (j-1, j, j+1):
+                        if l < 0 or l >= col_count:
+                            continue
+                        checkval = checkrow[l]
+                        if checkval != nodata:
+                            nbrs.append(checkval)
+                minval = min (nbrs)
+                print val, minval
+
 
         try:
             arcmgt.Delete(backlink_rast)
+            arcmgt.Delete(dest_layer)
         except Exception as e:
-            arcpy.AddMessage (str (e))
+            arcpy.AddMessage (e)
 
         last_target = row.getValue(target_fld)
 
