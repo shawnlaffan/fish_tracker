@@ -14,7 +14,7 @@ arcpy.CheckOutExtension("Spatial")
 
 import os
 import numpy
-#import pprint
+from pprint import pprint
 
 
 if __name__ == "__main__":
@@ -86,7 +86,6 @@ if __name__ == "__main__":
             '%s = %s' % (target_fld, last_target)
         )
         backlink_rast  = arcpy.CreateScratchName("backlink")
-        backlink_rast  = None
         path_dist_rast = PathDistance(feat_layer, cost_rast, out_backlink_raster = backlink_rast)
 
         #  extract the distance from the last point
@@ -115,25 +114,37 @@ if __name__ == "__main__":
         except Exception as e:
             raise
             #arcpy.AddMessage (str (e))
-        
+
+        nodata = path_dist_rast.noDataValue
+
         try:
-            path_array    = arcpy.RasterToNumPyArray(path_dist_rast)
-            transit_array = path_array * 0
+            mask = path_rast * 0 + 1
+            mask.save (arcpy.CreateScratchName("mask%d_" % last_target))
+            xx = path_dist_rast * mask
+            path_array     = arcpy.RasterToNumPyArray(xx)
+            #path_array.clip (nodata, 0)
+            path_array_idx = numpy.where(path_array != nodata)
+            #path_array      = arcpy.RasterToNumPyArray(path_rast)
+            transit_array  = numpy.zeros_like(path_array)
         except:
             raise
-        nodata = path_dist_rast.noDataValue
+        
+
+        pprint (path_array2)
 
         transit_time = row_cur.getValue (t_diff_fld_name)
         path_sum = 0
         #  loop over the array and check the neighbours
-        #  brute force search - need to follow the path
+        #  FIXME: brute force search - need to follow the path
+        #  or use numpy.where()
+        
         row_count = len (path_array) 
         col_count = len (path_array[0])
         print "processing path raster, %i rows, %i cols" % (row_count, col_count)
         i = -1
         for row in path_array:
             i = i + 1
-            if row.max() == 0:  #  skip empty rows, should be faster than checking in the loop
+            if row.max() == nodata:  #  skip empty rows, should be faster than checking in the loop
                 continue
             j = -1
             for val in row:
@@ -154,16 +165,17 @@ if __name__ == "__main__":
                 minval = min (nbrs)
                 diff = val - minval
                 transit_array[i][j] = diff
+                print i, j, diff
 
         path_sum = path_array.max()
         #  now calculate speed
         speed = path_sum / transit_time
         transit_array_cum = transit_array_cum + transit_array / speed
-        print "%s, %s, %s, %s" % (path_sum, transit_array.max(), transit_array_cum.max(), speed)
+        print "%s, %s, %s, %s, %s" % (path_sum, transit_array.max(), speed, transit_array_cum.max(), transit_array_cum.min())
 
         #  need to use env settings to get it to be the correct size
         xx = arcpy.NumPyArrayToRaster (transit_array_cum, lower_left_coord, cellsize_used, cellsize_used, nodata)
-        scratch = arcpy.CreateScratchName ('trans_cum', '.img', 'raster')
+        scratch = arcpy.CreateScratchName ('trans_cum_%s_' % row_cur.ID, '.img', 'raster')
         print "Saving to %s" % scratch
         xx.save (scratch)
 
@@ -174,6 +186,7 @@ if __name__ == "__main__":
             arcpy.AddMessage (e)
 
         last_target = row_cur.getValue(target_fld)
+        last_oid    = row_cur.ID
 
 
     print "Completed"
