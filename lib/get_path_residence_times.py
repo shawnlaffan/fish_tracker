@@ -6,6 +6,9 @@ Determine if they are best BBQ'd or crumbed and oven roasted.
 class NoFeatures(Exception):
     pass
 
+class PointNotOnRaster(Exception):
+    pass
+
 # Import arcpy module and other required modules
 import arcpy
 import arcpy.management as arcmgt
@@ -114,7 +117,6 @@ if __name__ == "__main__":
         if count == 0:
             raise NoFeatures("No features selected.  Possible coordinate system issues.\n" + condition)
 
-        
         try:
             path_cost_rast = CostPath(dest_layer, path_dist_rast, backlink_rast)
             path_cost_rast.save (arcpy.CreateScratchName("cp%d_" % last_target))
@@ -131,10 +133,12 @@ if __name__ == "__main__":
             transit_array  = numpy.zeros_like(path_array)
         except:
             raise
-        
 
-        path_sum = 0
+        if len(path_array_idx[0]) == 1:
+            arcpy.AddError ("point does not intersect the raster, OID is %s" % row.getValue (oid_fd_name))
+            raise PointNotOnRaster
 
+        path_sum  = 0
         row_count = len (path_array) 
         col_count = len (path_array[0])
         print "processing %i cells of path raster" % (len(path_array_idx[0]))
@@ -156,24 +160,12 @@ if __name__ == "__main__":
             minval = min (nbrs)
             diff = val - minval
             transit_array[i][j] = diff
-            #print i, j, diff
 
         path_sum = path_array.max()
         #  now calculate speed
         speed = path_sum / transit_time
         #  and increment the cumulative transit array
         transit_array_accum = transit_array_accum + transit_array / speed
-        #print "%s, %s, %s, %s" % (path_sum, transit_array.max(), speed, transit_array_accum.max())
-
-        #  need to use env settings to get it to be the correct size
-        #try:
-        #    xx = arcpy.NumPyArrayToRaster (transit_array_accum, lower_left_coord, cellsize_used, cellsize_used, nodata)
-        #    scratch = arcpy.CreateScratchName ('t_cum%s_' % row_cur.ID, None, 'raster')
-        #    print "Saving to %s" % scratch
-        #    xx.save (scratch)
-        #except:
-        #    print arcpy.GetMessages()
-        #    pass
 
         try:
             arcmgt.Delete(backlink_rast)
