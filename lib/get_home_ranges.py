@@ -32,24 +32,25 @@ if __name__ == "__main__":
     if (arcpy.env.workspace is None):
         arcpy.env.workspace = os.getcwd()
         
-    if not mask is None:
+    if len (mask) > 0:
         arcpy.env.mask = mask
     if arcpy.env.cellSize is None or arcpy.env.cellSize in ["MAXOF", "MINOF"]:
         arcpy.env.cellSize = mask
     if arcpy.env.extent is None or arcpy.env.extent in ["MAXOF", "MINOF"]:
         arcpy.env.extent = mask
     
-    add_msg_and_print ('Currently in directory: %s\n' % os.getcwd())
-    add_msg_and_print ('Workspace is: %s' % arcpy.env.workspace)
-    add_msg_and_print ('Cell size is: %s' % arcpy.env.cellSize)
+    arcpy.AddMessage ('Currently in directory: %s\n' % os.getcwd())
+    arcpy.AddMessage ('Workspace is: %s' % arcpy.env.workspace)
+    arcpy.AddMessage ('Cell size is: %s' % arcpy.env.cellSize)
 
     try:
         kde = KernelDensity(in_file, pop_fld, "#", kde_radius, "HECTARES")
     except Exception as e:
-        print e.message
-        arcpy.AddError(e.message)
+        #print e.message
+        #arcpy.AddError(e.message)
+        print arcpy.GetMessages()
         raise
-    
+
     percentiles = [0.1, 0.5]
     for percentile in percentiles:
         print "Calculating percentile %s" % percentile

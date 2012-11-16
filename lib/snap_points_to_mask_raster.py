@@ -29,10 +29,11 @@ if __name__ == "__main__":
     if arcpy.env.workspace is None or len(arcpy.env.workspace) == 0:
         arcpy.env.workspace = os.getcwd()
 
-
     poly_file = arcpy.CreateScratchName(None, '.shp', "POLYGON")
+    
     try:
         arcpy.RasterToPolygon_conversion (mask, poly_file, "NO_SIMPLIFY")
+    
     except:
         raise
 

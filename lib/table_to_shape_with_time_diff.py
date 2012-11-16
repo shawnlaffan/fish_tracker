@@ -57,7 +57,8 @@ if __name__ == "__main__":
 
     in_table  = arcpy.GetParameterAsText (0)
     out_file  = arcpy.GetParameterAsText (1)
-    workspace = arcpy.GetParameterAsText (2)
+    coord_sys = arcpy.GetParameterAsText (2)
+    workspace = arcpy.GetParameterAsText (3)
 
     if string.count(in_table, 'xls') and not string.count(in_table, 'Sheet1$'):
         in_table  = in_table + r"\Sheet1$"
@@ -68,10 +69,15 @@ if __name__ == "__main__":
     if arcpy.env.workspace is None:
         arcpy.env.workspace = os.getcwd()
 
-    add_msg_and_print ('Currently in directory: %s\n' % os.getcwd())
-    add_msg_and_print ('Workspace is: %s' % arcpy.env.workspace)
-    add_msg_and_print ('Output file is: %s' % out_file)
-    
+    if len(coord_sys) == 0:
+        coord_sys = default_coord_sys
+    else:
+        coord_sys = arcpy.SpatialReference (coord_sys)
+
+    arcpy.AddMessage ('Currently in directory: %s\n' % os.getcwd())
+    arcpy.AddMessage ('Workspace is: %s' % arcpy.env.workspace)
+    arcpy.AddMessage ('Output file is: %s' % out_file)
+
     #  get the path to the output table
     path = os.path.dirname(out_file)
     if len (path) == 0:
@@ -106,8 +112,6 @@ if __name__ == "__main__":
     row_count = -1
     t_diff_in_hours = 0
 
-    #featureList = []
-
     for row in rows:
         row_count = row_count + 1
         this_time = row.getValue(time_fld_name)
@@ -129,16 +133,20 @@ if __name__ == "__main__":
             feat.setValue(name, val)
         feat.ID = row_count
 
-        #pprint.pprint (last_row)
-        
         feat.setValue(t_diff_fld_name, t_diff_in_hours)
 
         cur.insertRow(feat)
 
         prev_time = this_time
 
-    arcpy.DefineProjection_management(out_fc_name, default_coord_sys)
+    arcpy.DefineProjection_management(out_fc_name, coord_sys)
     
+    count = arcpy.GetCount (out_fc_name)
+    count = int (count.getOutput(0))
+    if count == 0:
+        arcpy.AddError ("No featires created - is there a file lock issue?")
+
     print arcpy.GetMessages()
     
     print "Completed"
+    

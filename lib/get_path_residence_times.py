@@ -1,6 +1,6 @@
 """
 Process data tables collected for Matt Taylor's Mulloway research.
-Determine if they are best BBQ'd or crumbed and oven roasted.
+Determine if they are best with or without tartare sauce.
 """
 
 class NoFeatures(Exception):
@@ -183,7 +183,6 @@ if __name__ == "__main__":
         xx.save (out_raster)
     except:
         raise
-
 
 
     print "Completed"

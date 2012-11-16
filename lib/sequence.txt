@@ -1,3 +1,6 @@
-1.  table_to_shape_with_time_diff.py to get a shapefile with the time diffs
-2.  select points not in the river and snap them to the river 
-3.  calculate costpath distances between subsequent points, calculate the rate per unit distance and assign to cells based on their distances from adjacent (preceding) cells.  Sum over all paths.
+1.  table_to_shape_with_time_diff.py:	Get a shapefile with the time diffs between subsequent records.  
+2a. Ensure the river raster is nibbled inwards.  Use focal stats to do so, turning off option to ignore nodata.  Use majority stat.
+2b.  snap_points_to_mask_raster.py:		Select points not in the river and snap them to the (nibbled) river mask.  
+3a. Project the snapped points into the same coordinate system as the mask (if using command line)
+3b.  get_path_residence_times.py:		Ceate a raster with the amount of time the critter spends traversing/resident in each cell.
+4.  get_home_ranges.py:					Calculate the home ranges (90th and 50th percentiles).
