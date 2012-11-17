@@ -151,9 +151,11 @@ if __name__ == "__main__":
             pcr_mask       = 1 - IsNull (path_cost_rast)
             dist_masked    = path_dist_rast * pcr_mask
             path_array     = arcpy.RasterToNumPyArray(dist_masked)
-            pcr_mask_array = arcpy.RasterToNumPyArray(pcr_mask)
+            #pcr_mask_array = arcpy.RasterToNumPyArray(pcr_mask)
             #path_array_idx = numpy.where(pcr_mask_array == 1)
+            #path_array_idx = numpy.where(~numpy.isnan (path_array))
             path_array_idx = numpy.where(path_array > 0)
+            #arcpy.AddMessage ("XXXX %s" % path_array[0][0])
             transit_array  = numpy.zeros_like(path_array)
         except:
             raise
@@ -171,15 +173,11 @@ if __name__ == "__main__":
         row_count = len (path_array) 
         col_count = len (path_array[0])
         arcpy.AddMessage ("processing %i cells of path raster" % (len(path_array_idx[0])))
-        #arcpy.AddMessage ("%s %s" % (row_count, col_count))
-        #arcpy.AddMessage ("%s %s" % (len (pcr_mask_array), len(pcr_mask_array[0])))
+        #raise Exception ("stopping")
         for idx in range (len(path_array_idx[0])):
             i = path_array_idx[0][idx]
             j = path_array_idx[1][idx]
             val = path_array[i][j]
-            if val < 0 or val > 10 ** 6:
-                arcpy.AddMessage ("Value is negative or extremely positive (%s), %s %s" % (val, i, j))
-                raise Exception
             nbrs = []
             for k in (i-1, i, i+1):
                 if k < 0 or k >= row_count:
@@ -190,10 +188,12 @@ if __name__ == "__main__":
                         continue
                     checkval = checkrow[l]
                     if checkval >= 0:
+                    #if not numpy.isnan(checkval):
                         nbrs.append(checkval)
             minval = min (nbrs)
             diff = val - minval
             transit_array[i][j] = diff
+            
 
         path_sum = path_array.max()
         #  now calculate speed
