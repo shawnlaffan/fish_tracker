@@ -9,6 +9,9 @@ class NoFeatures(Exception):
 class PointNotOnRaster(Exception):
     pass
 
+class WorkspaceIsGeodatabase (Exception):
+    pass
+
 # Import arcpy module and other required modules
 import arcpy
 import arcpy.management as arcmgt
@@ -21,34 +24,48 @@ from pprint import pprint
 
 
 if __name__ == "__main__":
-    t_diff_fld_name = "T_DIFF_HRS"
+    #t_diff_fld_name = "T_DIFF_HRS"
 
     in_file    = arcpy.GetParameterAsText (0)
     cost_rast  = arcpy.GetParameterAsText (1)
     out_raster = arcpy.GetParameterAsText (2)
-    target_fld = arcpy.GetParameterAsText (3)
+    t_diff_fld_name = arcpy.GetParameterAsText (3)
     workspace  = arcpy.GetParameterAsText (4)
-    
+
     if len (out_raster) == 0:
         arcpy.AddError ("Missing argument: out_rast")
         raise Exception
 
-    if len (target_fld) == 0 or target_fld == "#":
+    #  redundant now???
+    target_fld = None
+    if target_fld is None or len (target_fld) == 0 or target_fld == "#":
         target_fld = "New_WP"
 
     arcpy.env.overwriteOutput = True
 
     if arcpy.env.outputCoordinateSystem is None:
         arcpy.env.outputCoordinateSystem = cost_rast
-    print arcpy.env.outputCoordinateSystem.name
+    arcpy.AddMessage ("coordinate system is %s" % arcpy.env.outputCoordinateSystem.name)
 
     if len(workspace):
         arcpy.env.workspace = workspace
     if arcpy.env.workspace is None or len(arcpy.env.workspace) == 0:
         arcpy.env.workspace = os.getcwd()
 
+    if '.gdb' in arcpy.env.workspace:
+        arcpy.AddError (
+            "Worskpace is a geodatabase.  " +
+            "This brings too much pain for this script to work.\n" +
+            "%s" % arcpy.env.workspace
+        )
+        raise WorkspaceIsGeodatabase
+
     arcpy.env.snapRaster = cost_rast
-    scratch = arcpy.CreateScratchName('xx', '.shp')
+    suffix = None
+    wk = arcpy.env.workspace
+    if not '.gdb' in wk:
+        suffix = '.shp'
+    scratch = arcpy.CreateScratchName('xx', suffix)
     try:
         arcpy.Buffer_analysis(in_file, scratch, "2000 meters")
     except Exception as e:
@@ -57,24 +74,31 @@ if __name__ == "__main__":
     desc = arcpy.Describe(scratch)
     arcpy.env.extent = desc.extent
     arcmgt.Delete(scratch)
-    print "Extent is %s" % arcpy.env.extent
+    arcpy.AddMessage ("Extent is %s" % arcpy.env.extent)
 
-    arcpy.env.cellSize = cost_rast
-    print "Cell size is %s" % arcpy.env.cellSize
+    r = Raster(cost_rast)
+    arcpy.env.cellSize = r.meanCellWidth
+    arcpy.AddMessage ("Cell size is %s" % arcpy.env.cellSize)
     cellsize_used = float (arcpy.env.cellSize)
     extent = arcpy.env.extent
     lower_left_coord = extent.lowerLeft
-
+    
     arcpy.AddMessage ('Currently in directory: %s\n' % os.getcwd())
     arcpy.AddMessage ('Workspace is: %s' % arcpy.env.workspace)
+    arcpy.AddMessage ("lower left is %s" % lower_left_coord)
 
-    #  cumulative transits
-    transit_array_accum = arcpy.RasterToNumPyArray (CreateConstantRaster (0))
+    if arcpy.env.mask is None:
+        arcpy.AddMessage ("Setting mask to %s" % cost_rast)
+        arcpy.env.mask = cost_rast
+
+    #  accumulated transits
+    transit_array_accum = arcpy.RasterToNumPyArray (Raster(cost_rast) * 0)
 
     feat_layer = "feat_layer"
     arcmgt.MakeFeatureLayer(in_file, feat_layer)
     desc = arcpy.Describe (feat_layer)
     oid_fd_name = desc.OIDFieldName
+    arcpy.AddMessage("oid_fd_name = %s" % oid_fd_name)
 
     proc_layer = "process_layer"
     arcmgt.MakeFeatureLayer(in_file, proc_layer)
@@ -85,12 +109,12 @@ if __name__ == "__main__":
         transit_time = row_cur.getValue (t_diff_fld_name)
 
         if last_target is None or transit_time == 0:
-            arcpy.AddMessage('Skipping record %s' % row_cur.getValue(oid_fd_name))
+            arcpy.AddMessage('Skipping %s = %s' % (oid_fd_name, row_cur.getValue(oid_fd_name)))
             last_target = row_cur.getValue(target_fld)
             last_oid    = row_cur.ID
             continue
 
-        arcpy.AddMessage ("Processing OID %i" % cur_row.getValue(oid_fd_name))
+        arcpy.AddMessage ("Processing OID %i" % row_cur.getValue(oid_fd_name))
 
         arcmgt.SelectLayerByAttribute(
             feat_layer,
@@ -106,6 +130,7 @@ if __name__ == "__main__":
         (x, y) = (centroid.X, centroid.Y)
         result = arcmgt.GetCellValue(path_dist_rast, "%s %s" % (x, y), "1")
         path_distance = result.getOutput(0)
+        arcpy.AddMessage("Path distance is %s" % path_distance)
 
         #  get a raster of the path from origin to destination
         condition = '%s in (%i, %i)' % (oid_fd_name, last_oid, row_cur.ID)
@@ -119,33 +144,42 @@ if __name__ == "__main__":
 
         try:
             path_cost_rast = CostPath(dest_layer, path_dist_rast, backlink_rast)
-            path_cost_rast.save (arcpy.CreateScratchName("cp%d_" % last_target))
-            path_dist_rast.save (arcpy.CreateScratchName("pd%d_" % last_target))
         except Exception as e:
             raise
 
-        nodata = path_dist_rast.noDataValue
-
         try:
-            dist_masked    = path_dist_rast * (path_cost_rast * 0 + 1)
+            pcr_mask       = 1 - IsNull (path_cost_rast)
+            dist_masked    = path_dist_rast * pcr_mask
             path_array     = arcpy.RasterToNumPyArray(dist_masked)
-            path_array_idx = numpy.where(path_array != nodata)
+            pcr_mask_array = arcpy.RasterToNumPyArray(pcr_mask)
+            #path_array_idx = numpy.where(pcr_mask_array == 1)
+            path_array_idx = numpy.where(path_array > 0)
             transit_array  = numpy.zeros_like(path_array)
         except:
             raise
 
         if len(path_array_idx[0]) == 1:
-            arcpy.AddError ("point does not intersect the raster, OID is %s" % row.getValue (oid_fd_name))
+            arcpy.AddError (
+                "Point does not intersect the raster.\n" +
+                "Did you snap them first?\n" +
+                "Are you using the correct cost raster?\n" +
+                "OID is %s" % row_cur.getValue (oid_fd_name)
+            )
             raise PointNotOnRaster
 
         path_sum  = 0
         row_count = len (path_array) 
         col_count = len (path_array[0])
-        print "processing %i cells of path raster" % (len(path_array_idx[0]))
+        arcpy.AddMessage ("processing %i cells of path raster" % (len(path_array_idx[0])))
+        #arcpy.AddMessage ("%s %s" % (row_count, col_count))
+        #arcpy.AddMessage ("%s %s" % (len (pcr_mask_array), len(pcr_mask_array[0])))
         for idx in range (len(path_array_idx[0])):
             i = path_array_idx[0][idx]
             j = path_array_idx[1][idx]
             val = path_array[i][j]
+            if val < 0 or val > 10 ** 6:
+                arcpy.AddMessage ("Value is negative or extremely positive (%s), %s %s" % (val, i, j))
+                raise Exception
             nbrs = []
             for k in (i-1, i, i+1):
                 if k < 0 or k >= row_count:
@@ -155,7 +189,7 @@ if __name__ == "__main__":
                     if l < 0 or l >= col_count:
                         continue
                     checkval = checkrow[l]
-                    if checkval != nodata:
+                    if checkval >= 0:
                         nbrs.append(checkval)
             minval = min (nbrs)
             diff = val - minval
@@ -173,11 +207,16 @@ if __name__ == "__main__":
         except Exception as e:
             arcpy.AddMessage (e)
 
+        #  getting off-by-one errors when using the environment, so use this directly
+        ext = path_cost_rast.extent
+        lower_left_coord = ext.lowerLeft
+
         last_target = row_cur.getValue(target_fld)
         last_oid    = row_cur.ID
 
     #  need to use env settings to get it to be the correct size
     try:
+        arcpy.AddMessage ("lower left is %s" % lower_left_coord)
         xx = arcpy.NumPyArrayToRaster (transit_array_accum, lower_left_coord, cellsize_used, cellsize_used, 0)
         print "Saving to %s" % out_raster
         xx.save (out_raster)
