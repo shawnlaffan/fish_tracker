@@ -68,7 +68,7 @@ if __name__ == "__main__":
     arcpy.env.workspace = workspace
     if arcpy.env.workspace is None:
         arcpy.env.workspace = os.getcwd()
-    
+
     arcpy.AddMessage ("Coordinate sys is %s" % arcpy.env.outputCoordinateSystem)
     arcpy.AddMessage ("coord_sys arg is %s" % coord_sys)
     if len(coord_sys) == 0 and arcpy.env.outputCoordinateSystem is None:
@@ -77,7 +77,8 @@ if __name__ == "__main__":
         try:  #  is it a spatial ref string?
             sr = arcpy.SpatialReference()
             sr.loadFromString (coord_sys)
-            coord_sys = sr.name
+            #coord_sys = sr.name
+            coord_sys = sr
         except Exception as e:
             arcpy.AddMessage (e)
             coord_sys = arcpy.SpatialReference (coord_sys)
@@ -85,7 +86,7 @@ if __name__ == "__main__":
     arcpy.AddMessage ('Currently in directory: %s\n' % os.getcwd())
     arcpy.AddMessage ('Workspace is: %s' % arcpy.env.workspace)
     arcpy.AddMessage ('Output file is: %s' % out_file)
-    arcpy.AddMessage ('Coord sys for result is %s' % coord_sys)
+    arcpy.AddMessage ('Coord sys for result is %s' % coord_sys.name)
 
     #  get the path to the output table
     path = os.path.dirname(out_file)
@@ -103,6 +104,7 @@ if __name__ == "__main__":
     #  output stuff
     arcpy.CreateFeatureclass_management (path, basename, "POINT")
     out_fc_name = os.path.join (path, basename)
+    arcpy.AddMessage ('out_fc_name = %s' % out_fc_name)
     
     name_dict = {}
     for fld in fields:
@@ -137,12 +139,12 @@ if __name__ == "__main__":
         feat = cur.newRow()
         feat.shape = poly_pnt
 
-        arcpy.AddMessage ("t_diff_fld_name = %s, t_diff_in_hours = %s" % (t_diff_fld_name, t_diff_in_hours))
+        #arcpy.AddMessage ("t_diff_fld_name = %s, t_diff_in_hours = %s" % (t_diff_fld_name, t_diff_in_hours))
 
         for fld in fields:
             name = name_dict[fld.name]
             val = row.getValue(fld.name)
-            arcpy.AddMessage ("name = %s, val = %s" % (name, val))
+            #arcpy.AddMessage ("name = %s, val = %s" % (name, val))
             feat.setValue(name, val)
         feat.ID = row_count
 
@@ -152,12 +154,12 @@ if __name__ == "__main__":
 
         prev_time = this_time
 
-    arcpy.DefineProjection_management(out_fc_name, coord_sys)
-    
-    count = arcpy.GetCount (out_fc_name)
+    count = arcmgt.GetCount (out_fc_name)
     count = int (count.getOutput(0))
     if count == 0:
-        arcpy.AddError ("No featires created - is there a file lock issue?")
+        arcpy.AddError ("No features created - is there a file lock issue?")
+
+    arcpy.DefineProjection_management(out_fc_name, coord_sys)    
 
     print arcpy.GetMessages()
     
