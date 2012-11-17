@@ -29,19 +29,25 @@ if __name__ == "__main__":
     if arcpy.env.workspace is None or len(arcpy.env.workspace) == 0:
         arcpy.env.workspace = os.getcwd()
 
-    poly_file = arcpy.CreateScratchName(None, '.shp', "POLYGON")
-    
+    arcpy.AddMessage ("workspace is %s" % arcpy.env.workspace)
+
     try:
-        arcpy.RasterToPolygon_conversion (mask, poly_file, "NO_SIMPLIFY")
-    
+        suffix = None
+        wk = arcpy.env.workspace
+        if not '.gdb' in wk:
+            suffix = '.shp'
+        poly_file = arcpy.CreateScratchName(None, suffix, 'POLYGON')
+        arcpy.RasterToPolygon_conversion (mask, poly_file, 'NO_SIMPLIFY')
     except:
         raise
+
+    arcpy.AddMessage ("poly_file is %s" % poly_file)
 
     try:
         snap_layer_name = 'get_layer_for_snapping'
         arcmgt.MakeFeatureLayer (in_file, snap_layer_name)
-        arcmgt.SelectLayerByLocation (snap_layer_name, 'intersect', poly_file, "#", "NEW_SELECTION")
-        arcmgt.SelectLayerByAttribute(snap_layer_name, "SWITCH_SELECTION")
+        arcmgt.SelectLayerByLocation (snap_layer_name, 'intersect', poly_file, '#', 'NEW_SELECTION')
+        arcmgt.SelectLayerByAttribute(snap_layer_name, 'SWITCH_SELECTION')
         if arcmgt.GetCount(snap_layer_name) > 0:
             arcpy.Snap_edit (snap_layer_name, [[poly_file, "EDGE", distance]])
         else:
