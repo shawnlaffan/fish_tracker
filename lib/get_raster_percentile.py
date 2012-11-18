@@ -108,13 +108,11 @@ if __name__ == "__main__":
     if (arcpy.env.workspace is None):
         arcpy.env.workspace = os.getcwd()
     
-    add_msg_and_print ('Currently in directory: %s\n' % os.getcwd())
-    add_msg_and_print ('Workspace is: %s' % arcpy.env.workspace)
-    
+    arcpy.AddMessage ('Currently in directory: %s\n' % os.getcwd())
+    arcpy.AddMessage ('Workspace is: %s' % arcpy.env.workspace)
+
     val = get_percentile(in_file, percentile, multiplier, skip_value)
 
     print "Value is %s" % (val)
-
-
 
     print "Completed"
