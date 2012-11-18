@@ -24,8 +24,6 @@ from pprint import pprint
 
 
 if __name__ == "__main__":
-    #t_diff_fld_name = "T_DIFF_HRS"
-
     in_file    = arcpy.GetParameterAsText (0)
     cost_rast  = arcpy.GetParameterAsText (1)
     out_raster = arcpy.GetParameterAsText (2)
@@ -151,11 +149,7 @@ if __name__ == "__main__":
             pcr_mask       = 1 - IsNull (path_cost_rast)
             dist_masked    = path_dist_rast * pcr_mask
             path_array     = arcpy.RasterToNumPyArray(dist_masked)
-            #pcr_mask_array = arcpy.RasterToNumPyArray(pcr_mask)
-            #path_array_idx = numpy.where(pcr_mask_array == 1)
-            #path_array_idx = numpy.where(~numpy.isnan (path_array))
             path_array_idx = numpy.where(path_array > 0)
-            #arcpy.AddMessage ("XXXX %s" % path_array[0][0])
             transit_array  = numpy.zeros_like(path_array)
         except:
             raise
@@ -173,7 +167,7 @@ if __name__ == "__main__":
         row_count = len (path_array) 
         col_count = len (path_array[0])
         arcpy.AddMessage ("processing %i cells of path raster" % (len(path_array_idx[0])))
-        #raise Exception ("stopping")
+
         for idx in range (len(path_array_idx[0])):
             i = path_array_idx[0][idx]
             j = path_array_idx[1][idx]
@@ -187,13 +181,13 @@ if __name__ == "__main__":
                     if l < 0 or l >= col_count:
                         continue
                     checkval = checkrow[l]
+                    #  negs are nodata, and this way we
+                    #  don't need to care what that value is
                     if checkval >= 0:
-                    #if not numpy.isnan(checkval):
                         nbrs.append(checkval)
             minval = min (nbrs)
             diff = val - minval
             transit_array[i][j] = diff
-            
 
         path_sum = path_array.max()
         #  now calculate speed
