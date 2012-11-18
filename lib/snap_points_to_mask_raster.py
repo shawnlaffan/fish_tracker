@@ -14,8 +14,9 @@ import arcpy.management as arcmgt
 if __name__ == "__main__":
     in_file   = arcpy.GetParameterAsText (0)
     mask      = arcpy.GetParameterAsText (1)
-    distance  = arcpy.GetParameterAsText (2)
-    workspace = arcpy.GetParameterAsText (3)
+    out_file  = arcpy.GetParameterAsText (2)
+    distance  = arcpy.GetParameterAsText (3)
+    workspace = arcpy.GetParameterAsText (4)
 
     if distance is None or len (distance) == 0:
         distance = "100 METERS"
@@ -43,9 +44,11 @@ if __name__ == "__main__":
 
     arcpy.AddMessage ("poly_file is %s" % poly_file)
 
+    arcmgt.Copy (in_file, out_file)
+
     try:
         snap_layer_name = 'get_layer_for_snapping'
-        arcmgt.MakeFeatureLayer (in_file, snap_layer_name)
+        arcmgt.MakeFeatureLayer (out_file, snap_layer_name)
         arcmgt.SelectLayerByLocation (snap_layer_name, 'intersect', poly_file, '#', 'NEW_SELECTION')
         arcmgt.SelectLayerByAttribute(snap_layer_name, 'SWITCH_SELECTION')
         if arcmgt.GetCount(snap_layer_name) > 0:
