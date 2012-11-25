@@ -44,7 +44,7 @@ if __name__ == "__main__":
     arcpy.AddMessage ('Workspace is: %s' % arcpy.env.workspace)
     arcpy.AddMessage ('Cell size is: %s' % arcpy.env.cellSize)
 
-    #raidu = arcpy.LinearDistance
+
     try:
         arcpy.AddMessage (
             "%s = KernelDensity(%s, %s, '#', %s, 'HECTARES')"
