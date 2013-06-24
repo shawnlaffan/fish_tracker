@@ -164,13 +164,13 @@ if __name__ == "__main__":
 
         try:
             path_cost_rast = CostPath(dest_layer, path_dist_rast, backlink_rast)
-            path_dist_rast.save("xx_pr" + str (last_oid))
+            #path_dist_rast.save("xx_pr" + str (last_oid))
         except Exception as e:
             raise
 
         try:
             pcr_mask       = 1 - IsNull (path_cost_rast)
-            pcr_mask.save ("xx_pcr_mask" + str (last_oid))
+            #pcr_mask.save ("xx_pcr_mask" + str (last_oid))
             dist_masked    = path_dist_rast * pcr_mask
             path_array     = arcpy.RasterToNumPyArray(dist_masked)
             path_array_idx = numpy.where(path_array > 0)
