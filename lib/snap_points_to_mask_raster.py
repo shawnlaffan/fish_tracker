@@ -44,6 +44,13 @@ if __name__ == "__main__":
 
     arcpy.AddMessage ("poly_file is %s" % poly_file)
 
+    #  handle layers and datasets
+    desc = arcpy.Describe(in_file)
+    in_file = desc.catalogPath
+
+    arcpy.AddMessage ("Input point file is %s" % in_file)
+    arcpy.AddMessage ("Output point file is %s" % out_file)
+
     arcmgt.Copy (in_file, out_file)
 
     try:
