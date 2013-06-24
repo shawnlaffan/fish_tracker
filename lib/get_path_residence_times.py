@@ -23,6 +23,24 @@ import numpy
 from pprint import pprint
 
 
+def check_points_are_in_in_cost_raster(in_file, raster):
+    proc_layer = "checker"
+    arcmgt.MakeFeatureLayer(in_file, proc_layer)
+    rows = arcpy.SearchCursor(proc_layer)
+
+    for row_cur in rows:
+        shp = row_cur.shape
+        centroid = shp.centroid
+        (x, y) = (centroid.X, centroid.Y)
+        result = arcmgt.GetCellValue(raster, "%s %s" % (x, y), "1")
+        value = result.getOutput(0)
+        if value == 'NoData':
+            return 0
+        print value
+
+    return 1
+
+
 if __name__ == "__main__":
     in_file    = arcpy.GetParameterAsText (0)
     cost_rast  = arcpy.GetParameterAsText (1)
@@ -57,6 +75,10 @@ if __name__ == "__main__":
             "%s" % arcpy.env.workspace
         )
         raise WorkspaceIsGeodatabase
+
+    if not check_points_are_in_in_cost_raster(in_file, cost_rast):
+        arcpy.AddError ('One or more input points do not intersect the cost raster')
+        raise PointNotOnRaster
 
     arcpy.env.snapRaster = cost_rast
     suffix = None
@@ -156,24 +178,15 @@ if __name__ == "__main__":
         except:
             raise
 
-
         path_sum = None
 
         if path_distance == 0:
-            path_sum = cellsize_used / 2 #  stayed in the same cell
+            path_sum = 1 #  stayed in the same cell
             mask_array = arcpy.RasterToNumPyArray(pcr_mask, nodata_to_value = -9999)
             mask_array_idx = numpy.where(mask_array == 1)
             i = mask_array_idx[0][0]
             j = mask_array_idx[1][0]
             transit_array[i][j] = path_sum
-        #elif len(path_array_idx[0]) < 1:
-        #    arcpy.AddError (  #  need a different way of detecting this condition
-        #        "Point does not intersect the raster.\n" +
-        #        "Did you snap them first?\n" +
-        #        "Are you using the correct cost raster?\n" +
-        #        "%s is %s" % (oid_fd_name, row_cur.getValue (oid_fd_name))
-        #    )
-        #    raise PointNotOnRaster
         else:
             row_count = len (path_array) 
             col_count = len (path_array[0])
@@ -186,7 +199,7 @@ if __name__ == "__main__":
                 nbrs = []
                 for k in (i-1, i, i+1):
                     if k < 0 or k >= row_count:
-                        continue    
+                        continue
                     checkrow = path_array[k]
                     for l in (j-1, j, j+1):
                         if l < 0 or l >= col_count:
