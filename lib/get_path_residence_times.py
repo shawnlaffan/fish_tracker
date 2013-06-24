@@ -36,7 +36,7 @@ def check_points_are_in_in_cost_raster(in_file, raster):
         value = result.getOutput(0)
         if value == 'NoData':
             return 0
-        print value
+        #print value
 
     return 1
 
@@ -172,7 +172,7 @@ if __name__ == "__main__":
             pcr_mask       = 1 - IsNull (path_cost_rast)
             #pcr_mask.save ("xx_pcr_mask" + str (last_oid))
             dist_masked    = path_dist_rast * pcr_mask
-            path_array     = arcpy.RasterToNumPyArray(dist_masked)
+            path_array     = arcpy.RasterToNumPyArray(dist_masked, nodata_to_value = -9999)
             path_array_idx = numpy.where(path_array > 0)
             transit_array  = numpy.zeros_like(path_array)
         except:
@@ -204,21 +204,30 @@ if __name__ == "__main__":
                     for l in (j-1, j, j+1):
                         if l < 0 or l >= col_count:
                             continue
+                        if k == i and j == l:
+                            continue  #  don't check self
                         checkval = checkrow[l]
                         #  negs are nodata, and this way we
                         #  don't need to care what that value is
                         if checkval >= 0:
-                            nbrs.append(checkval)
-                minval = min (nbrs)
-                diff = val - minval
+                            diff = val - checkval
+                            if diff > 0:
+                                nbrs.append(diff)
+                diff = min (nbrs)
                 transit_array[i][j] = diff
-    
+
             path_sum = path_array.max()
 
         #  now calculate speed
         speed = path_sum / transit_time
         #  and increment the cumulative transit array
         transit_array_accum = transit_array_accum + transit_array / speed
+
+        #xx = arcpy.NumPyArrayToRaster (transit_array, lower_left_coord, cellsize_used, cellsize_used, 0)
+        #tmpname = "xx_t_arr_" + str (last_oid)
+        #print "Saving to %s" % tmpname
+        #xx.save (tmpname)
+
 
         try:
             arcmgt.Delete(backlink_rast)
