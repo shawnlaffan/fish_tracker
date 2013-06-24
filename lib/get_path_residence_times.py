@@ -112,7 +112,7 @@ if __name__ == "__main__":
             last_oid    = row_cur.ID
             continue
 
-        arcpy.AddMessage ("Processing OID %i" % row_cur.getValue(oid_fd_name))
+        arcpy.AddMessage ("Processing %s %i" % (oid_fd_name, row_cur.getValue(oid_fd_name)))
 
         arcmgt.SelectLayerByAttribute(
             feat_layer,
@@ -127,7 +127,7 @@ if __name__ == "__main__":
         centroid = shp.centroid
         (x, y) = (centroid.X, centroid.Y)
         result = arcmgt.GetCellValue(path_dist_rast, "%s %s" % (x, y), "1")
-        path_distance = result.getOutput(0)
+        path_distance = float (result.getOutput(0))
         arcpy.AddMessage("Path distance is %s" % path_distance)
 
         #  get a raster of the path from origin to destination
@@ -142,11 +142,13 @@ if __name__ == "__main__":
 
         try:
             path_cost_rast = CostPath(dest_layer, path_dist_rast, backlink_rast)
+            path_dist_rast.save("xx_pr" + str (last_oid))
         except Exception as e:
             raise
 
         try:
             pcr_mask       = 1 - IsNull (path_cost_rast)
+            pcr_mask.save ("xx_pcr_mask" + str (last_oid))
             dist_masked    = path_dist_rast * pcr_mask
             path_array     = arcpy.RasterToNumPyArray(dist_masked)
             path_array_idx = numpy.where(path_array > 0)
@@ -154,42 +156,52 @@ if __name__ == "__main__":
         except:
             raise
 
-        if len(path_array_idx[0]) == 1:
-            arcpy.AddError (
-                "Point does not intersect the raster.\n" +
-                "Did you snap them first?\n" +
-                "Are you using the correct cost raster?\n" +
-                "OID is %s" % row_cur.getValue (oid_fd_name)
-            )
-            raise PointNotOnRaster
 
-        path_sum  = 0
-        row_count = len (path_array) 
-        col_count = len (path_array[0])
-        arcpy.AddMessage ("processing %i cells of path raster" % (len(path_array_idx[0])))
+        path_sum = None
 
-        for idx in range (len(path_array_idx[0])):
-            i = path_array_idx[0][idx]
-            j = path_array_idx[1][idx]
-            val = path_array[i][j]
-            nbrs = []
-            for k in (i-1, i, i+1):
-                if k < 0 or k >= row_count:
-                    continue    
-                checkrow = path_array[k]
-                for l in (j-1, j, j+1):
-                    if l < 0 or l >= col_count:
-                        continue
-                    checkval = checkrow[l]
-                    #  negs are nodata, and this way we
-                    #  don't need to care what that value is
-                    if checkval >= 0:
-                        nbrs.append(checkval)
-            minval = min (nbrs)
-            diff = val - minval
-            transit_array[i][j] = diff
+        if path_distance == 0:
+            path_sum = cellsize_used / 2 #  stayed in the same cell
+            mask_array = arcpy.RasterToNumPyArray(pcr_mask, nodata_to_value = -9999)
+            mask_array_idx = numpy.where(mask_array == 1)
+            i = mask_array_idx[0][0]
+            j = mask_array_idx[1][0]
+            transit_array[i][j] = path_sum
+        #elif len(path_array_idx[0]) < 1:
+        #    arcpy.AddError (  #  need a different way of detecting this condition
+        #        "Point does not intersect the raster.\n" +
+        #        "Did you snap them first?\n" +
+        #        "Are you using the correct cost raster?\n" +
+        #        "%s is %s" % (oid_fd_name, row_cur.getValue (oid_fd_name))
+        #    )
+        #    raise PointNotOnRaster
+        else:
+            row_count = len (path_array) 
+            col_count = len (path_array[0])
+            arcpy.AddMessage ("processing %i cells of path raster" % (len(path_array_idx[0])))
 
-        path_sum = path_array.max()
+            for idx in range (len(path_array_idx[0])):
+                i = path_array_idx[0][idx]
+                j = path_array_idx[1][idx]
+                val = path_array[i][j]
+                nbrs = []
+                for k in (i-1, i, i+1):
+                    if k < 0 or k >= row_count:
+                        continue    
+                    checkrow = path_array[k]
+                    for l in (j-1, j, j+1):
+                        if l < 0 or l >= col_count:
+                            continue
+                        checkval = checkrow[l]
+                        #  negs are nodata, and this way we
+                        #  don't need to care what that value is
+                        if checkval >= 0:
+                            nbrs.append(checkval)
+                minval = min (nbrs)
+                diff = val - minval
+                transit_array[i][j] = diff
+    
+            path_sum = path_array.max()
+
         #  now calculate speed
         speed = path_sum / transit_time
         #  and increment the cumulative transit array
