@@ -114,28 +114,37 @@ if __name__ == "__main__":
         arcpy.AddField_management(out_fc_name, name, fld.type)
     arcpy.AddField_management(out_fc_name, t_diff_fld_name, "DOUBLE")
 
+    arcpy.AddMessage (str (name_dict))
+
     cur      = arcpy.InsertCursor(out_fc_name)
     poly_pnt = arcpy.CreateObject("Point")
-
 
     rows = arcpy.SearchCursor(table_view)
     last_row = None
     prev_time = None
     row_count = -1
     t_diff_in_hours = 0
+    
+    arcpy.AddMessage ("Time field name is %s" % time_fld_name)
 
     for row in rows:
         row_count = row_count + 1
-        this_time = row.getValue(time_fld_name)
+        try:
+            this_time = row.getValue(time_fld_name)
+        except Exception as e:
+            raise e
 
         if prev_time is not None:
             time_diff = this_time - prev_time
             t_diff_in_hours = time_diff_in_hours(time_diff)
 
         poly_pnt.ID = row_count
-        poly_pnt.X  = row.getValue(lon_fld_name)
-        poly_pnt.Y  = row.getValue(lat_fld_name)
-
+        try:
+            poly_pnt.X  = row.getValue(lon_fld_name)
+            poly_pnt.Y  = row.getValue(lat_fld_name)
+        except Exception as e:
+            raise e
+        
         feat = cur.newRow()
         feat.shape = poly_pnt
 
