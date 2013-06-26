@@ -150,7 +150,7 @@ if __name__ == "__main__":
         (x, y) = (centroid.X, centroid.Y)
         result = arcmgt.GetCellValue(path_dist_rast, "%s %s" % (x, y), "1")
         path_distance = float (result.getOutput(0))
-        arcpy.AddMessage("Path distance is %s" % path_distance)
+        arcpy.AddMessage("Path distance is %s\nTransit time is %s" % (path_distance, transit_time))
 
         #  get a raster of the path from origin to destination
         condition = '%s in (%i, %i)' % (oid_fd_name, last_oid, row_cur.ID)
@@ -174,7 +174,7 @@ if __name__ == "__main__":
             dist_masked    = path_dist_rast * pcr_mask
             path_array     = arcpy.RasterToNumPyArray(dist_masked, nodata_to_value = -9999)
             path_array_idx = numpy.where(path_array > 0)
-            transit_array  = numpy.zeros_like(path_array)
+            transit_array  = numpy.zeros_like(path_array)  #  past experience suggests we might need to use a different approach to guarantee we get zeroes
         except:
             raise
 
@@ -213,15 +213,19 @@ if __name__ == "__main__":
                             diff = val - checkval
                             if diff > 0:
                                 nbrs.append(diff)
+                                #arcpy.AddMessage ("Check val is %s" % checkval)
+                                #arcpy.AddMessage ("Diff  val is %s" % diff)
                 diff = min (nbrs)
+                #arcpy.AddMessage ("Diff  val is %s" % diff)
                 transit_array[i][j] = diff
 
-            path_sum = path_array.max()
+            path_sum = path_array.max()  #  could use path_distance?
+            #arcpy.AddMessage ("path_array.max is %s" % path_sum)
 
-        #  now calculate speed
-        speed = path_sum / transit_time
-        #  and increment the cumulative transit array
-        transit_array_accum = transit_array_accum + transit_array / speed
+        #  Increment the cumulative transit array by the fraction of the
+        #  transit time spent in each cell.
+        #  Use path_sum because it corrects for cases where we stayed in the same cell.
+        transit_array_accum = transit_array_accum + ((transit_array / path_sum) * transit_time)
 
         #xx = arcpy.NumPyArrayToRaster (transit_array, lower_left_coord, cellsize_used, cellsize_used, 0)
         #tmpname = "xx_t_arr_" + str (last_oid)
