@@ -41,13 +41,8 @@ def check_points_are_in_in_cost_raster(in_file, raster):
     return 1
 
 
-if __name__ == "__main__":
-    in_file    = arcpy.GetParameterAsText (0)
-    cost_rast  = arcpy.GetParameterAsText (1)
-    out_raster = arcpy.GetParameterAsText (2)
-    t_diff_fld_name = arcpy.GetParameterAsText (3)
-    workspace  = arcpy.GetParameterAsText (4)
-
+def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, workspace):
+    
     if len (out_raster) == 0:
         arcpy.AddError ("Missing argument: out_rast")
         raise Exception
@@ -255,3 +250,22 @@ if __name__ == "__main__":
 
 
     print "Completed"
+
+    return ()
+
+if __name__ == "__main__":
+    in_file    = arcpy.GetParameterAsText (0)
+    cost_rast  = arcpy.GetParameterAsText (1)
+    out_raster = arcpy.GetParameterAsText (2)
+    t_diff_fld_name = arcpy.GetParameterAsText (3)
+    workspace  = arcpy.GetParameterAsText (4)
+
+    get_path_residence_times (
+        in_file,
+        cost_rast,
+        out_raster,
+        t_diff_fld_name,
+        workspace
+    )
+    
+    
