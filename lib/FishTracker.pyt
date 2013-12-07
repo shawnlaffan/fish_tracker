@@ -13,11 +13,14 @@ class Toolbox(object):
         self.tools = [GetPathResidenceTimes]
 
 
+
 descr = """
 Toolbox to run the FishTracker analysis system.
 """
 
 class GetPathResidenceTimes (object):
+    descr = """Step 4. Get path residence times"""
+
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
         self.label = "GetPathResidenceTimes"
@@ -26,6 +29,7 @@ class GetPathResidenceTimes (object):
 
     def getParameterInfo(self):
         """Define parameter definitions"""
+
         # Input Features parameter
         in_file = arcpy.Parameter(
             displayName   = "Input Feature Class",
@@ -33,7 +37,7 @@ class GetPathResidenceTimes (object):
             datatype      = "DEFeatureClass",
             parameterType = "Required",
             direction     = "Input",
-            #description   = 'XXXXX'
+            #message       = 'XXXXX'
             )
         in_file.filter.list = ["Point"]
 
@@ -64,6 +68,7 @@ class GetPathResidenceTimes (object):
         )
         t_diff_fld_name.value = "T_DIFF_HRS"
         t_diff_fld_name.parameterDependencies = [in_file.name]
+        t_diff_fld_name.filter.list = ['Short', 'Long', 'Double', 'Float']
 
         workspace = arcpy.Parameter(
             displayName   = "Workspace",
@@ -72,7 +77,7 @@ class GetPathResidenceTimes (object):
             parameterType = "Optional",
             direction     = "Input"
         )
-        workspace.value = arcpy.env.workspace
+        workspace.defaultEnvironmentName = "workspace"
 
         parameters = [
             in_file,
