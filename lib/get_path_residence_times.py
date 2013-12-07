@@ -52,11 +52,6 @@ if __name__ == "__main__":
         arcpy.AddError ("Missing argument: out_rast")
         raise Exception
 
-    #  redundant now???
-    target_fld = None
-    if target_fld is None or len (target_fld) == 0 or target_fld == "#":
-        target_fld = "New_WP"
-
     arcpy.env.overwriteOutput = True
 
     if arcpy.env.outputCoordinateSystem is None:
@@ -120,6 +115,9 @@ if __name__ == "__main__":
     oid_fd_name = desc.OIDFieldName
     arcpy.AddMessage("oid_fd_name = %s" % oid_fd_name)
 
+    #  variable name is redundant now??? - should all calls be to oid_fd_name?
+    target_fld = oid_fd_name
+
     proc_layer = "process_layer"
     arcmgt.MakeFeatureLayer(in_file, proc_layer)
     rows = arcpy.SearchCursor(proc_layer)
@@ -131,7 +129,7 @@ if __name__ == "__main__":
         if last_target is None or transit_time == 0:
             arcpy.AddMessage('Skipping %s = %s' % (oid_fd_name, row_cur.getValue(oid_fd_name)))
             last_target = row_cur.getValue(target_fld)
-            last_oid    = row_cur.ID
+            last_oid    = row_cur.getValue(oid_fd_name)
             continue
 
         arcpy.AddMessage ("Processing %s %i" % (oid_fd_name, row_cur.getValue(oid_fd_name)))
@@ -153,7 +151,7 @@ if __name__ == "__main__":
         arcpy.AddMessage("Path distance is %s\nTransit time is %s" % (path_distance, transit_time))
 
         #  get a raster of the path from origin to destination
-        condition = '%s in (%i, %i)' % (oid_fd_name, last_oid, row_cur.ID)
+        condition = '%s in (%i, %i)' % (oid_fd_name, last_oid, row_cur.getValue(oid_fd_name))
         dest_layer = "dest_layer" + str (last_oid)
         arcmgt.MakeFeatureLayer(in_file, dest_layer, where_clause = condition)
 
@@ -244,7 +242,7 @@ if __name__ == "__main__":
         lower_left_coord = ext.lowerLeft
 
         last_target = row_cur.getValue(target_fld)
-        last_oid    = row_cur.ID
+        last_oid    = row_cur.getValue(oid_fd_name)
 
     #  need to use env settings to get it to be the correct size
     try:
