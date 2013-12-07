@@ -17,17 +17,7 @@ import pprint
 
 from get_raster_percentile import *
 
-
-if __name__ == "__main__":
-    in_file    = arcpy.GetParameterAsText (0)
-    pop_fld    = arcpy.GetParameterAsText (1)
-    out_ras50  = arcpy.GetParameterAsText (2)
-    out_ras10  = arcpy.GetParameterAsText (3)
-    kde_raster = arcpy.GetParameterAsText (4)
-    kde_radius = arcpy.GetParameterAsText (5)
-    mask       = arcpy.GetParameterAsText (6)
-    workspace  = arcpy.GetParameterAsText (7)
-
+def get_home_ranges (in_file, pop_fld, out_ras50, out_ras10, kde_raster, kde_radius, mask, workspace):
     arcpy.env.workspace = workspace
     if (arcpy.env.workspace is None):
         arcpy.env.workspace = os.getcwd()
@@ -70,3 +60,18 @@ if __name__ == "__main__":
         i = i + 1
 
     print "Completed"
+
+    return
+
+if __name__ == "__main__":
+    in_file    = arcpy.GetParameterAsText (0)
+    pop_fld    = arcpy.GetParameterAsText (1)
+    out_ras50  = arcpy.GetParameterAsText (2)
+    out_ras10  = arcpy.GetParameterAsText (3)
+    kde_raster = arcpy.GetParameterAsText (4)
+    kde_radius = arcpy.GetParameterAsText (5)
+    mask       = arcpy.GetParameterAsText (6)
+    workspace  = arcpy.GetParameterAsText (7)
+
+    get_home_ranges (in_file, pop_fld, out_ras50, out_ras10, kde_raster, kde_radius, mask, workspace)
+    
