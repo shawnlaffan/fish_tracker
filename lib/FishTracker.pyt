@@ -1,4 +1,4 @@
-import arcpy 
+import arcpy
 from arcpy.sa import *
 import os, math, tempfile
 from get_path_residence_times import get_path_residence_times
@@ -72,6 +72,7 @@ class GetPathResidenceTimes (object):
             parameterType = "Optional",
             direction     = "Input"
         )
+        workspace.value = arcpy.env.workspace
 
         parameters = [
             in_file,
@@ -107,9 +108,15 @@ class GetPathResidenceTimes (object):
 
         arcpy.CheckOutExtension("Spatial")
 
+        get_path_residence_times (
+            parameters[0].valueAsText,
+            parameters[1].valueAsText,
+            parameters[2].valueAsText,
+            parameters[3].valueAsText,
+            parameters[4].valueAsText,
+        )
+
 
 if __name__ == "__main__":
-    x = GetPathResidenceTimes()
-    y = x.getParameterInfo()
     #get_path_residence_times ()
     print "exiting"
