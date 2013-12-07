@@ -11,13 +11,8 @@ import os
 import arcpy
 import arcpy.management as arcmgt
 
-if __name__ == "__main__":
-    in_file   = arcpy.GetParameterAsText (0)
-    mask      = arcpy.GetParameterAsText (1)
-    out_file  = arcpy.GetParameterAsText (2)
-    distance  = arcpy.GetParameterAsText (3)
-    workspace = arcpy.GetParameterAsText (4)
-
+def snap_points_to_mask_raster (in_file, mask, out_file, distance, workspace):
+    
     if distance is None or len (distance) == 0:
         distance = "100 METERS"
     
@@ -48,10 +43,13 @@ if __name__ == "__main__":
     desc = arcpy.Describe(in_file)
     in_file = desc.catalogPath
 
+    if arcpy.env.workspace[-4:] != '.gdb':
+        out_file = out_file + '.shp'
+
     arcpy.AddMessage ("Input point file is %s" % in_file)
     arcpy.AddMessage ("Output point file is %s" % out_file)
 
-    arcmgt.Copy (in_file, out_file)
+    arcmgt.CopyFeatures (in_file, out_file)
 
     try:
         snap_layer_name = 'get_layer_for_snapping'
@@ -71,3 +69,14 @@ if __name__ == "__main__":
 
     print arcpy.GetMessages()
     print "Completed"
+
+    return
+
+if __name__ == "__main__":
+    in_file   = arcpy.GetParameterAsText (0)
+    mask      = arcpy.GetParameterAsText (1)
+    out_file  = arcpy.GetParameterAsText (2)
+    distance  = arcpy.GetParameterAsText (3)
+    workspace = arcpy.GetParameterAsText (4)
+
+    snap_points_to_mask_raster (in_file, mask, out_file, distance, workspace)
