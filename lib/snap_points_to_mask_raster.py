@@ -5,7 +5,7 @@ Snaps the point features to the cost raster to ensure all are inside.
 FIXME:  Moves points in the original file!
 """
 
-import os
+import os, re
 
 # Import arcpy module and other required modules
 import arcpy
@@ -43,8 +43,13 @@ def snap_points_to_mask_raster (in_file, mask, out_file, distance, workspace):
     desc = arcpy.Describe(in_file)
     in_file = desc.catalogPath
 
-    if arcpy.env.workspace[-4:] != '.gdb':
-        out_file = out_file + '.shp'
+    #  add .shp extension if needed - clunky, but otherwise system fails below
+    re_gdb = re.compile ('\.gdb$')
+    path = os.path.dirname(out_file)
+    if len (path) == 0:
+        path = arcpy.env.workspace
+    if not re_gdb.search (path):
+        out_file += '.shp'
 
     arcpy.AddMessage ("Input point file is %s" % in_file)
     arcpy.AddMessage ("Output point file is %s" % out_file)
