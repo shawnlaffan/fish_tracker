@@ -14,6 +14,7 @@ import os
 import string
 import math
 import pprint
+import random
 
 def add_msg_and_print(msg, severity=0):
     # Adds a Message to the geoprocessor (in case this is run as a tool)
@@ -41,10 +42,10 @@ def get_percentile (in_file, percentile = 0.5, multiplier = 100, skip_value = No
     mult_rast = Times (in_file, multiplier)
     int_rast  = Int (mult_rast)
     arcmgt.BuildRasterAttributeTable(int_rast)
-    
-    table_view = "table_view"
+
+    table_view = "table_view%d" % int (random.random() * 1000)
     arcmgt.MakeTableView(int_rast, table_view)
-    
+
     fields = arcpy.ListFields(in_file)
     
     rows = arcpy.SearchCursor(table_view)
@@ -82,6 +83,8 @@ def get_percentile (in_file, percentile = 0.5, multiplier = 100, skip_value = No
             break
 
     val = float (val) / multiplier
+
+    arcmgt.Delete (table_view)
     
     return val
 
