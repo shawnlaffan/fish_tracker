@@ -45,10 +45,11 @@ def snap_points_to_mask_raster (in_file, mask, out_file, distance, workspace):
 
     #  add .shp extension if needed - clunky, but otherwise system fails below
     re_gdb = re.compile ('\.gdb$')
+    re_shp = re.compile ('\.shp$')
     path = os.path.dirname(out_file)
     if len (path) == 0:
         path = arcpy.env.workspace
-    if not re_gdb.search (path):
+    if not re_gdb.search (path) and not re_shp.search (out_file):
         out_file += '.shp'
 
     arcpy.AddMessage ("Input point file is %s" % in_file)
