@@ -74,4 +74,5 @@ if __name__ == "__main__":
     workspace  = arcpy.GetParameterAsText (7)
 
     get_home_ranges (in_file, pop_fld, out_ras50, out_ras10, kde_raster, kde_radius, mask, workspace)
-    
+
+    arcpy.AddMessage ("Percentile process completed")
