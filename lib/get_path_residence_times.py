@@ -46,6 +46,8 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
     if len (out_raster) == 0:
         arcpy.AddError ("Missing argument: out_rast")
         raise Exception
+    if len (t_diff_fld_name) == 0:
+        t_diff_fld_name = "T_DIFF_HRS"
 
     arcpy.env.overwriteOutput = True
 
@@ -75,18 +77,23 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
     wk = arcpy.env.workspace
     if not '.gdb' in wk:
         suffix = '.shp'
-    scratch = arcpy.CreateScratchName('xx', suffix)
-    try:
-        arcpy.Buffer_analysis(in_file, scratch, "2000 meters")
-    except Exception as e:
-        arcpy.AddMessage (str(e))
-        raise
-    desc = arcpy.Describe(scratch)
-    arcpy.env.extent = desc.extent
-    arcmgt.Delete(scratch)
-    arcpy.AddMessage ("Extent is %s" % arcpy.env.extent)
 
     r = Raster(cost_rast)
+
+    ext = arcpy.env.extent
+    if ext is None:
+        arcpy.env.extent = r
+        #scratch = arcpy.CreateScratchName('xx', suffix)
+        #try:
+        #    arcpy.Buffer_analysis(in_file, scratch, "2000 meters")
+        #except Exception as e:
+        #    arcpy.AddMessage (str(e))
+        #    raise
+        #desc = arcpy.Describe(scratch)
+        #arcpy.env.extent = desc.extent
+        #arcmgt.Delete(scratch)
+    arcpy.AddMessage ("Extent is %s" % arcpy.env.extent)
+
     arcpy.env.cellSize = r.meanCellWidth
     arcpy.AddMessage ("Cell size is %s" % arcpy.env.cellSize)
     cellsize_used = float (arcpy.env.cellSize)
@@ -206,8 +213,7 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
                             diff = val - checkval
                             if diff > 0:
                                 nbrs.append(diff)
-                                #arcpy.AddMessage ("Check val is %s" % checkval)
-                                #arcpy.AddMessage ("Diff  val is %s" % diff)
+                                #arcpy.AddMessage ("Check and diff vals are %s %s" % (checkval, diff))
                 diff = min (nbrs)
                 #arcpy.AddMessage ("Diff  val is %s" % diff)
                 transit_array[i][j] = diff
