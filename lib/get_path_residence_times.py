@@ -12,6 +12,10 @@ class PointNotOnRaster(Exception):
 class WorkspaceIsGeodatabase (Exception):
     pass
 
+class CostRasterIsZero(Exception):
+    pass
+
+
 # Import arcpy module and other required modules
 import arcpy
 import arcpy.management as arcmgt
@@ -68,6 +72,13 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
         )
         raise WorkspaceIsGeodatabase
 
+
+    r = Raster(cost_rast)
+    
+    if r.maximum == 0 and r.minimum == 0:
+        arcpy.AddMessage ('Cost raster has only zero value.  Cannot calculate cost distances.')
+        raise CostRasterIsZero
+
     if not check_points_are_in_in_cost_raster(in_file, cost_rast):
         arcpy.AddError ('One or more input points do not intersect the cost raster')
         raise PointNotOnRaster
@@ -78,20 +89,11 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
     if not '.gdb' in wk:
         suffix = '.shp'
 
-    r = Raster(cost_rast)
 
     ext = arcpy.env.extent
     if ext is None:
         arcpy.env.extent = r
-        #scratch = arcpy.CreateScratchName('xx', suffix)
-        #try:
-        #    arcpy.Buffer_analysis(in_file, scratch, "2000 meters")
-        #except Exception as e:
-        #    arcpy.AddMessage (str(e))
-        #    raise
-        #desc = arcpy.Describe(scratch)
-        #arcpy.env.extent = desc.extent
-        #arcmgt.Delete(scratch)
+
     arcpy.AddMessage ("Extent is %s" % arcpy.env.extent)
 
     arcpy.env.cellSize = r.meanCellWidth
