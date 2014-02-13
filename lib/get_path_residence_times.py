@@ -92,7 +92,7 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
 
     ext = arcpy.env.extent
     if ext is None:
-        arcpy.env.extent = r
+        arcpy.env.extent = r.extent
 
     arcpy.AddMessage ("Extent is %s" % arcpy.env.extent)
 
