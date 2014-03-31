@@ -131,7 +131,10 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
         transit_time = row_cur.getValue (t_diff_fld_name)
 
         if last_target is None or transit_time == 0:
-            arcpy.AddMessage('Skipping %s = %s' % (oid_fd_name, row_cur.getValue(oid_fd_name)))
+            message = 'Skipping %s = %s' % (oid_fd_name, row_cur.getValue(oid_fd_name))
+            if transit_time == 0:
+                message = message + "  Transit time is zero"
+            arcpy.AddMessage(message)
             last_target = row_cur.getValue(target_fld)
             last_oid    = row_cur.getValue(oid_fd_name)
             continue
