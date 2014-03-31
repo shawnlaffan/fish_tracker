@@ -60,7 +60,9 @@ if __name__ == "__main__":
     coord_sys = arcpy.GetParameterAsText (2)
     workspace = arcpy.GetParameterAsText (3)
 
-    if string.count(in_table, 'xls') and not string.count(in_table, 'Sheet1$'):
+    #  This is a bodge.
+    #  excel worksheets end in the $ symbol, but we can have quotes around them
+    if 'xls' in in_table and not '$' in in_table:
         in_table  = in_table + r"\Sheet1$"
 
     #arcpy.env.overwriteOutput = True
