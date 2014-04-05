@@ -15,11 +15,16 @@ class WorkspaceIsGeodatabase (Exception):
 class CostRasterIsZero(Exception):
     pass
 
+class NumPyArrayExceedsSizeLimits (Exception):
+    pass
+
 
 # Import arcpy module and other required modules
 import arcpy
 import arcpy.management as arcmgt
-from arcpy.sa import *
+#from arcpy.sa import *
+from arcpy.sa import Raster, CostPath, PathDistance, IsNull
+
 arcpy.CheckOutExtension("Spatial")
 
 import os
@@ -53,7 +58,7 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
     if len (t_diff_fld_name) == 0:
         t_diff_fld_name = "T_DIFF_HRS"
 
-    arcpy.env.overwriteOutput = True
+    arcpy.env.overwriteOutput = True  #  This is underhanded.  It should be an argument.
 
     if arcpy.env.outputCoordinateSystem is None:
         arcpy.env.outputCoordinateSystem = cost_rast
@@ -78,6 +83,17 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
     if r.maximum == 0 and r.minimum == 0:
         arcpy.AddMessage ('Cost raster has only zero value.  Cannot calculate cost distances.')
         raise CostRasterIsZero
+
+    size = r.height * r.width * 4
+    if size > 2 * 1028 ** 3:
+        import struct
+        struct_size = struct.calcsize("P") * 8
+        if struct_size == 32:
+            size_in_gb = float (size) / (1028 ** 3)
+            arcpy.AddMessage (
+                'Cost raster exceeds 2 GiB in size (%s GiB).  This is too large for a 32 bit NumPy.' % size_in_gb
+            )
+            raise NumPyArrayExceedsSizeLimits
 
     if not check_points_are_in_in_cost_raster(in_file, cost_rast):
         arcpy.AddError ('One or more input points do not intersect the cost raster')
