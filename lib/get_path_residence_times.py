@@ -18,6 +18,9 @@ class CostRasterIsZero(Exception):
 class NumPyArrayExceedsSizeLimits (Exception):
     pass
 
+class PathDistanceIsNoData (Exception):
+    pass
+
 
 # Import arcpy module and other required modules
 import arcpy
@@ -32,7 +35,7 @@ import numpy
 from pprint import pprint
 
 
-def check_points_are_in_in_cost_raster(in_file, raster):
+def check_points_are_in_cost_raster(in_file, raster):
     proc_layer = "checker"
     arcmgt.MakeFeatureLayer(in_file, proc_layer)
     rows = arcpy.SearchCursor(proc_layer)
@@ -95,7 +98,7 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
             )
             raise NumPyArrayExceedsSizeLimits
 
-    if not check_points_are_in_in_cost_raster(in_file, cost_rast):
+    if not check_points_are_in_cost_raster(in_file, cost_rast):
         arcpy.AddError ('One or more input points do not intersect the cost raster')
         raise PointNotOnRaster
 
@@ -170,7 +173,19 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
         centroid = shp.centroid
         (x, y) = (centroid.X, centroid.Y)
         result = arcmgt.GetCellValue(path_dist_rast, "%s %s" % (x, y), "1")
-        path_distance = float (result.getOutput(0))
+        res_val = result.getOutput(0)
+        if res_val == "NoData":
+            this_oid = row_cur.getValue(oid_fd_name)
+            arcpy.AddMessage ("Got nodata for coordinate (%s, %s)" % (x, y))
+            arcpy.AddMessage ("Is the path between features %s and %s wholly contained by the cost raster?" % (last_oid, this_oid))
+            pras_name = "pth_%s_%s.tif" % (last_oid, this_oid)
+            arcpy.AddMessage ("Attempting to save path raster as %s" % pras_name)
+            try:
+                path_dist_rast.save(pras_name)
+            except Exception as e:
+                arcpy.AddMessage (e)
+            raise PathDistanceIsNoData
+        path_distance = float (res_val)
         arcpy.AddMessage("Path distance is %s\nTransit time is %s" % (path_distance, transit_time))
 
         #  get a raster of the path from origin to destination
