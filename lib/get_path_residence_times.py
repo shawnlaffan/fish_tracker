@@ -215,8 +215,9 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
             raise
 
         path_sum = None
+        arcpy.AddMessage ("processing %i cells of path raster" % (len(path_array_idx[0])))
 
-        if path_distance == 0:
+        if path_distance == 0 or not len(path_array_idx[0]):
             path_sum = 1 #  stayed in the same cell
             mask_array = arcpy.RasterToNumPyArray(pcr_mask, nodata_to_value = -9999)
             mask_array_idx = numpy.where(mask_array == 1)
@@ -226,7 +227,6 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
         else:
             row_count = len (path_array) 
             col_count = len (path_array[0])
-            arcpy.AddMessage ("processing %i cells of path raster" % (len(path_array_idx[0])))
 
             for idx in range (len(path_array_idx[0])):
                 i = path_array_idx[0][idx]
@@ -257,6 +257,10 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
             path_sum = path_array.max()  #  could use path_distance?
             #arcpy.AddMessage ("path_array.max is %s" % path_sum)
 
+        #  sometimes we get a zero path_sum even when the path_distance is non-zero
+        if path_sum == 0:
+            path_sum = 1
+
         #  Increment the cumulative transit array by the fraction of the
         #  transit time spent in each cell.
         #  Use path_sum because it corrects for cases where we stayed in the same cell.
@@ -264,7 +268,7 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
 
         #xx = arcpy.NumPyArrayToRaster (transit_array, lower_left_coord, cellsize_used, cellsize_used, 0)
         #tmpname = "xx_t_arr_" + str (last_oid)
-        #print "Saving to %s" % tmpname
+        #print "Saving transit array to %s" % tmpname
         #xx.save (tmpname)
 
 
