@@ -9,6 +9,9 @@ class NoFeatures(Exception):
 class PointNotOnRaster(Exception):
     pass
 
+class PointHasNoGeometry(Exception):
+    pass
+
 class WorkspaceIsGeodatabase (Exception):
     pass
 
@@ -42,8 +45,15 @@ def check_points_are_in_cost_raster(in_file, raster):
 
     for row_cur in rows:
         shp = row_cur.shape
-        centroid = shp.centroid
-        (x, y) = (centroid.X, centroid.Y)
+        try:
+            centroid = shp.centroid
+            (x, y) = (centroid.X, centroid.Y)
+        except:
+            arcpy.AddError (
+                'One or more input points have no geometry (X or Y coords are not defined).  '
+                + 'This can be caused by imported spreadsheets having excess rows.'
+            )
+            raise PointHasNoGeometry
         result = arcmgt.GetCellValue(raster, "%s %s" % (x, y), "1")
         value = result.getOutput(0)
         if value == 'NoData':
