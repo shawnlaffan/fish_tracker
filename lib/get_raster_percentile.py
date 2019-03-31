@@ -39,8 +39,12 @@ def add_msg_and_print(msg, severity=0):
 
 
 def get_percentile (in_file, percentile = 0.5, multiplier = 100, skip_value = None):
-    mult_rast = Times (in_file, multiplier)
-    int_rast  = Int (mult_rast)
+    # mult_rast = Times (in_file, multiplier)
+    int_rast  = Int (Times (in_file, multiplier))
+    
+    #  no idea why this is needed, but something needs to tickle int_rast
+    print (int_rast)
+    
     arcmgt.BuildRasterAttributeTable(int_rast)
 
     table_view = "table_view%d" % int (random.random() * 1000)
