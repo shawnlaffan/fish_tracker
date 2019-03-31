@@ -195,7 +195,15 @@ def get_path_residence_times (in_file, cost_rast, out_raster, t_diff_fld_name, w
             except Exception as e:
                 arcpy.AddMessage (e)
             raise PathDistanceIsNoData
-        path_distance = float (res_val)
+        try:
+            path_distance = float (res_val)
+        except:
+            #  kludge around locale/radix issues 
+            if res_val.find(","):
+                res_val = res_val.replace(",", ".")
+                path_distance = float (res_val)
+            else:
+                raise
         arcpy.AddMessage("Path distance is %s\nTransit time is %s" % (path_distance, transit_time))
 
         #  get a raster of the path from origin to destination
