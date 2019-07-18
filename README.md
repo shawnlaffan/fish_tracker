@@ -8,3 +8,5 @@ The tool is described in Laffan & Taylor (2013) FishTracker: A GIS toolbox for k
 Timothy Spier from WIU has very kindly made two videos on the theory behind the tool and how to use it.  They can be accessed from http://youtu.be/3oq7I_9OkOw and http://youtu.be/G5R0vYTT9qA
 
 For an example application, see Anastácio et al. (2015) Indicators of movement and space use for two co-occurring invasive crayfish species.  _Ecological Indicators_.   http://dx.doi.org/10.1016/j.ecolind.2015.01.019
+
+See the also the citing studies indexed by Google Scholar at https://scholar.google.com.au/scholar?oi=bibs&hl=en&cites=16046955010623934920
