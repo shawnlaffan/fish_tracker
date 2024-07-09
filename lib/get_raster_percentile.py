@@ -38,12 +38,28 @@ def add_msg_and_print(msg, severity=0):
         pass
 
 
-def get_percentile (in_file, percentile = 0.5, multiplier = 100, skip_value = None):
+def get_percentile (in_file, percentile = 0.5, multiplier = 0, skip_value = None):
     # mult_rast = Times (in_file, multiplier)
+    if multiplier == 0:
+        max = float (arcpy.GetRasterProperties_management (in_file, "MAXIMUM").getOutput (0))
+        multiplier = 2048 / max
+        add_msg_and_print("Percentile multiplier : " + str(multiplier))
+        # add_msg_and_print("Max IS: " + str(max))
+        # add_msg_and_print("F IS: " + str(in_file))
+    
     int_rast  = Int (Times (in_file, multiplier))
     
     #  no idea why this is needed, but something needs to tickle int_rast
     print (int_rast)
+
+    #  the print statement is not always enough 
+    temp_int_name = arcpy.CreateScratchName("pctl_int")
+    try:
+        int_rast.save(temp_int_name)
+    except Exception as e:
+        arcpy.AddMessage (e)
+                
+    # add_msg_and_print("Int IS: " + str(int_rast))
     
     arcmgt.BuildRasterAttributeTable(int_rast)
 
@@ -89,6 +105,7 @@ def get_percentile (in_file, percentile = 0.5, multiplier = 100, skip_value = No
     val = float (val) / multiplier
 
     arcmgt.Delete (table_view)
+    arcmgt.Delete (temp_int_name)
     
     return val
 
