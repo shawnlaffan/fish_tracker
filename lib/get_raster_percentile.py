@@ -40,6 +40,7 @@ def add_msg_and_print(msg, severity=0):
 
 def get_percentile (in_file, percentile = 0.5, multiplier = 0, skip_value = None):
     # mult_rast = Times (in_file, multiplier)
+    multiplier = float(multiplier)
     if multiplier == 0:
         max = float (arcpy.GetRasterProperties_management (in_file, "MAXIMUM").getOutput (0))
         multiplier = 2048 / max
@@ -107,6 +108,8 @@ def get_percentile (in_file, percentile = 0.5, multiplier = 0, skip_value = None
     arcmgt.Delete (table_view)
     arcmgt.Delete (temp_int_name)
     
+    add_msg_and_print("Percentile threshold is: " + str(val))
+    
     return val
 
 
@@ -119,7 +122,7 @@ if __name__ == "__main__":
     workspace   = arcpy.GetParameterAsText (4)
 
     if len (multiplier) == 0 or multiplier == "#":
-        multiplier = 100
+        multiplier = 0
     if len (skip_value) == 0 or skip_value == "#":
         skip_value = None
     if not skip_value is None:
