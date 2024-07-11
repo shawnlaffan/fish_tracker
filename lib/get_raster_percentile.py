@@ -39,11 +39,14 @@ def add_msg_and_print(msg, severity=0):
 
 
 def get_percentile (in_file, percentile = 0.5, multiplier = 0, skip_value = None):
+    
+    percentile = float(percentile)
+    
     # mult_rast = Times (in_file, multiplier)
     multiplier = float(multiplier)
     if multiplier == 0:
         max = float (arcpy.GetRasterProperties_management (in_file, "MAXIMUM").getOutput (0))
-        multiplier = 2048 / max
+        multiplier = 8192 / max
         add_msg_and_print("Percentile multiplier : " + str(multiplier))
         # add_msg_and_print("Max IS: " + str(max))
         # add_msg_and_print("F IS: " + str(in_file))
@@ -59,6 +62,7 @@ def get_percentile (in_file, percentile = 0.5, multiplier = 0, skip_value = None
         int_rast.save(temp_int_name)
     except Exception as e:
         arcpy.AddMessage (e)
+        raise(e)
                 
     # add_msg_and_print("Int IS: " + str(int_rast))
     
@@ -71,6 +75,10 @@ def get_percentile (in_file, percentile = 0.5, multiplier = 0, skip_value = None
     
     rows = arcpy.SearchCursor(table_view)
     cum_sum = 0
+    
+    
+    if skip_value is not None:
+        skip_value = float(skip_value)
 
     for row in rows:
     
@@ -85,6 +93,7 @@ def get_percentile (in_file, percentile = 0.5, multiplier = 0, skip_value = None
     row = None
 
     target = cum_sum * percentile
+    arcpy.AddMessage ("Target count is " + str(target))
 
     rows2 = arcpy.SearchCursor(table_view)
     cum_sum = 0
